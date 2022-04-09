@@ -31,12 +31,7 @@ util.bignumberConfig(bignumberConfig);
 api.getBlockHeader().then(async (latest) => {
 	console.log(`latest block Number: ${latest}, ${"0x" + (latest - 10).toString(16)}`)
 	const blocks_per_second = 5;
-	const blocks = 30*24*60*60 / blocks_per_second;
-
-	// fake lastest block Number (for dependable execution)
-	//latest = 3873056 // <- contains "-10 flexUSD from chrome_account_1 to smartbch_scanner_donation" (0xdf200e05563d373ed6cf0499b716912f3219ef3de9d160cbd03488da2054c4bb)
-	//latest = 3874265 // <- contains 7 flexUSD to chrome_account_1 
-	//console.log(`fake latest block Number (for dependable execution): ${latest}, ${"0x" + (latest - 10).toString(16)}`)
+	//const blocks = 30*24*60*60 / blocks_per_second;
 
 	const contract_name = 'flexUSD'
 	const contract = contracts.filter(c => c.name === contract_name)[0]
@@ -63,7 +58,6 @@ api.getBlockHeader().then(async (latest) => {
 	// list of topics to query events for
 	let topics: string[][] = [
 		["0xd1ac89bfc464ce49c894c4e2379f1ca2b062aff1a640e929764ac1157fa13f0f"], // flexUSD.ChangeMultiplier topic
-		//[util.convertAddressToTopic(config.a.nick.trezor_8_flexUSD_BCH)], // your sbch address(es)
 	];
 	// append my_addresses from config
 	topics = topics.concat(config.my_addresses.map((a) => [util.convertAddressToTopic(a)]));
