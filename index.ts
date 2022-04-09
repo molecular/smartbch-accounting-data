@@ -1,5 +1,4 @@
 import { config } from "./config";
-import nodes from './assets/config/nodes.json';
 import contracts from "./assets/config/contract.json";
 import contract_abis from "./assets/config/contract-abi.json";
 
@@ -16,7 +15,7 @@ import { stringify } from 'csv-stringify';
 import { BigNumber } from 'bignumber.js';
 
 const util = new UtilHelperService();
-const api = new NodeApiService(nodes[0]);
+const api = new NodeApiService(config.api);
 
 // configure BigNumber classes (here and in util module)
 const bignumberConfig: BigNumber.Config = {
@@ -186,25 +185,22 @@ function appendSyntheticEvents(events: any[]) {
 		}
 		if (event["method"] == "ChangeMultiplier") {
 			let multiplier = new BigNumber(event["multiplier(uint256)"])
-			//console.log("multiplier:", multiplier);
-			//let multiplier_change = multiplier.dividedBy(previousMultiplier);
 
 			config.my_addresses.forEach((a) => {
-				//let new_balance = balance_by_address[a].multipliedBy(multiplier_change).integerValue();
-				let new_balance = balance_by_address[a].multipliedBy(multiplier).dividedBy(previousMultiplier).toInteger();
-				let diff = new_balance.minus(balance_by_address[a])
-				if (!diff.isEqualTo(0)) {
+				let new_balance = balance_by_address[a].multipliedBy(multiplier).dividedBy(previousMultiplier).integerValue();
+				let delta = new_balance.minus(balance_by_address[a])
+				if (!delta.isEqualTo(0)) {
 					created_events.push({
 						blockTimestamp: event.blockTimestamp,
 						blockDate: event.blockDate,
 						blockNumber: event.blockNumber,
-						abi: '<interest payment>',
+						abi: '<synthetic, interest payment>',
 						method: 'Transfer',
 						contract_address: event.contract_address,
 						contract_name: event.contract_name,
 						"from(address)": "",
 						"to(address)": a,
-						"value(uint256)": diff,
+						"value(uint256)": delta,
 						"<balance>(uint256)": new_balance
 					});
 					balance_by_address[a] = new_balance;
