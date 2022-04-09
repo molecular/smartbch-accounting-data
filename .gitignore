@@ -1,0 +1,7 @@
+NOTES
+dist
+node_modules
+config.ts
+config.js
+.~lock*
+*.csv

@@ -1,0 +1,450 @@
+[
+  {
+    "address": "0xE11829A7D5d8806BB36E118461a1012588faFD89",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "SPICE",
+    "logo": true
+  },
+  {
+    "address": "0x265bd28d79400d55a1665707fa14a72978fa6043",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "CashCats",
+    "logo": true
+  },
+  {
+    "address": "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72",
+    "abiNames": ["FlexUSDImplV2"],
+    "type": "FlexUSDImplV2",
+    "name": "flexUSD",
+    "logo": true
+  },
+  {
+    "address": "0x77cb87b57f54667978eb1b199b28a0db8c8e1c0b",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "EBEN",
+    "logo": true
+  },
+  {
+    "address": "0x675E1d6FcE8C7cC091aED06A68D079489450338a",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "Bitcoin Cash Argentina",
+    "logo": true
+  },
+  {
+    "address": "0x7eBeAdb95724a006aFaF2F1f051B13F4eBEBf711",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "CashKitten",
+    "logo": true
+  },
+  {
+    "address": "0xF2d4D9c65C2d1080ac9e1895F6a32045741831Cd",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "HONK",
+    "logo": true
+  },
+  {
+    "address": "0xc70c7718C7f1CCd906534C2c4a76914173EC2c44",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "Knuth",
+    "logo": true
+  },
+  {
+    "address": "0xc2100c9486B320B6db2Fc6D1f2BeAAB713fF069D",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "🌩",
+    "logo": true
+  },
+  {
+    "address": "0xc2100c9486B320B6db2Fc6D1f2BeAAB713fF069D",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "🌩",
+    "logo": true
+  },
+  {
+    "address": "0x481De06DCA0198844faA36FCa04Db364e5c2f86C",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "MAZE",
+    "logo": true
+  },
+  {
+    "address": "0x8f66C730e383Bb412a9a3cB58178BAb2f432d194",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "sVNT Token",
+    "logo": true
+  },
+  {
+    "address": "0x2a886b947d5a8f0e09408C9069914Fa44C06ed7e",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "VANDALS",
+    "logo": true
+  },
+  {
+    "address": "0x2a886b947d5a8f0e09408C9069914Fa44C06ed7e",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "VANDALS",
+    "logo": true
+  },
+  {
+    "address": "0x80453ACDfE0073D6743B27D72e06F48777EeAd80",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "ZOMBIE",
+    "logo": true
+  },
+  {
+    "address": "0x0D8b355f9CEDeB612f2df4B39CdD87059A244567",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "CandyMan",
+    "logo": true
+  },
+  {
+    "address": "0x252fd94f3Fb53D3D62F4FEc708501ACd59A57e52",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "HAM",
+    "logo": true
+  },
+  {
+    "address": "0xB24D7763516bca9656779d760be9a32490f46E27",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "HODL",
+    "logo": true
+  },
+  {
+    "address": "0x0b00366fBF7037E9d75E4A569ab27dAB84759302",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "LAW",
+    "logo": true
+  },
+  {
+    "address": "0x5a3bB59F34D60E9EB5643Fb80C8D712275F6a96A",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "PHA",
+    "logo": true
+  },
+  {
+    "address": "0x9288df32951386A8254aEaF80a66B78cCaf75b82",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "sBUSD",
+    "logo": true
+  },
+  {
+    "address": "0xFfA2394B61D3dE16538a2Bbf3491297Cc5a7C79a",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "UAT",
+    "logo": true
+  },
+  {
+    "address": "0x445B3712A09f8102Dd0c1ffb6B3b0dE4D3B643b7",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "WRS",
+    "logo": true
+  },
+  {
+    "address": "0xFf3ed63bf8bC9303eA0A7E1215bA2f82D569799e",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "ORB - Enter The Sphere",
+    "logo": true
+  },
+  {
+    "address": "0x98Dd7eC28FB43b3C4c770AE532417015fa939Dd3",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "FLEX Coin",
+    "logo": true
+  },
+  {
+    "address": "0x7DF65F158126898725f262378538B60db543C11A",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "MGOT",
+    "logo": true
+  },
+  {
+    "address": "0x3d13DaFcCA3a188DB340c81414239Bc2be312Ec9",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "AxieBCH",
+    "logo": true
+  },
+  {
+    "address": "0xB5b1939ef0a3743d0Ae9282DbA62312b614A5Ac0",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "Potato",
+    "logo": true
+  },
+  {
+    "address": "0xc8E09AEdB3c949a875e1FD571dC4b3E48FB221f0",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "MILK Token",
+    "logo": true
+  },
+  {
+    "address": "0x2f309b9D47b1Ce7f0ec30a26baB2dEaB8c4ea5E9",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "ShibaCash",
+    "logo": true
+  },
+  {
+    "address": "0x09A4CDb1569563fF277aC457cED35fe2551aEC1D",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "Cheese",
+    "logo": true
+  },
+  {
+    "address": "0x5fA664f69c2A4A3ec94FaC3cBf7049BD9CA73129",
+    "abiNames": ["sushitoken"],
+    "type": "sep20",
+    "name": "Mist",
+    "logo": true
+  },
+  {
+    "address": "0x73BE9c8Edf5e951c9a0762EA2b1DE8c8F38B5e91",
+    "abiNames": ["sushitoken"],
+    "type": "sep20",
+    "name": "Tango",
+    "logo": true
+  },
+  {
+    "address": "0x0000000000000000000000000000000000002711",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "BCH (native SEP20 interface)",
+    "logo": false
+  },
+  {
+    "address": "0xa194133ED572D86fe27796F2feADBAFc062cB9E0",
+    "abiNames": ["benswaprouter"],
+    "type": "custom",
+    "name": "BenSwapRouter",
+    "logo": false
+  },
+  {
+    "address": "0x8d973bAD782c1FFfd8FcC9d7579542BA7Dd0998D",
+    "abiNames": ["benswapfactory"],
+    "type": "custom",
+    "name": "BenSwapFactory",
+    "logo": false
+  },
+  {
+    "address": "0x3743eC0673453E5009310C727Ba4eaF7b3a1cc04",
+    "abiNames": ["weth"],
+    "type": "sep20",
+    "name": "Wrapped BCH",
+    "logo": true
+  },
+  {
+    "address": "0x7850ec1815b18531f080d7d478613c718f4b5db7",
+    "abiNames": ["pancakepair"],
+    "type": "custom",
+    "name": "BenSwap LP - Spice / BCH",
+    "logo": false
+  },
+  {
+    "address": "0x47c58bec061480bb6f6ce076a69f4d236d841a71",
+    "abiNames": ["pancakepair"],
+    "type": "custom",
+    "name": "BenSwap LP - $CATS / BCH",
+    "logo": false
+  },
+  {
+    "address": "0x727edbd86d079b087a132d3304799d921037a88f",
+    "abiNames": ["pancakepair"],
+    "type": "custom",
+    "name": "BenSwap LP - $CATS / EBEN",
+    "logo": false
+  },
+  {
+    "address": "0x0d4372acc0503fbcc7eb129e0de3283c348b82c3",
+    "abiNames": ["pancakepair"],
+    "type": "custom",
+    "name": "BenSwap LP - $WBCH / EBEN",
+    "logo": false
+  },
+  {
+    "address": "0xDEa721EFe7cBC0fCAb7C8d65c598b21B6373A2b6",
+    "abiNames": ["masterbreeder"],
+    "type": "custom",
+    "name": "MasterBreeder",
+    "logo": false
+  },
+  {
+    "address": "0xfC4956e6e9EBA4F22b42Ef67C9aEA5f43e58f700",
+    "abiNames": ["chaincheque"],
+    "type": "custom",
+    "name": "ChainCheque (Checkbook)",
+    "logo": false
+  },
+  {
+    "address": "0xa36C479eEAa25C0CFC7e099D3bEbF7A7F1303F40",
+    "abiNames": ["chaincheque"],
+    "type": "custom",
+    "name": "ChainCheque (Checkbook V2)",
+    "logo": false
+  },
+  {
+    "address": "0x72cd8c0B5169Ff1f337E2b8F5b121f8510b52117",
+    "abiNames": ["benswapfactory"],
+    "type": "custom",
+    "name": "MuesliSwap Factory",
+    "logo": false
+  },
+  {
+    "address": "0x87786fFa56d47a3862e272E67C82d9d9Fae14347",
+    "abiNames": ["benswaprouter"],
+    "type": "custom",
+    "name": "MuesliSwap Router",
+    "logo": false
+  },
+  {
+    "address": "0x5d0bF8d8c8b054080E2131D8b260a5c6959411B8",
+    "abiNames": ["uniswapV2Router02"],
+    "type": "custom",
+    "name": "MIST Router",
+    "logo": false
+  },
+  {
+    "address": "0x3A7B9D0ed49a90712da4E087b17eE4Ac1375a5D4",
+    "abiNames": ["masterchef"],
+    "type": "custom",
+    "name": "MIST MasterChef",
+    "logo": false
+  },
+  {
+    "address": "0xC41C680c60309d4646379eD62020c534eB67b6f4",
+    "abiNames": ["sushibar"],
+    "type": "custom",
+    "name": "MISTbar",
+    "logo": true
+  },
+  {
+    "address": "0xb93184fB3eEDb4d32150763578cA305488240c8e",
+    "abiNames": ["uniswapV2Router02"],
+    "type": "custom",
+    "name": "TANGO Router",
+    "logo": false
+  },
+  {
+    "address": "0x38cC060DF3a0498e978eB756e44BD43CC4958aD9",
+    "abiNames": ["masterchef"],
+    "type": "custom",
+    "name": "TANGO MasterChef",
+    "logo": false
+  },
+  {
+    "address": "0x98Ff640323C059d8C4CB846976973FEEB0E068aA",
+    "abiNames": ["sushibar"],
+    "type": "custom",
+    "name": "TANGObar",
+    "logo": true
+  },
+  {
+    "address": "0x7642Df81b5BEAeEb331cc5A104bd13Ba68c34B91",
+    "abiNames": ["celery", "sep20"],
+    "type": "sep20",
+    "name": "Celery",
+    "logo": true
+  },
+  {
+    "address": "0x516Ef15d906466F75E50A0e6Edd3E6Ce5908cB13",
+    "abiNames": ["tokensale"],
+    "type": "custom",
+    "name": "Celery Presale Contract",
+    "logo": false
+  },
+  {
+    "address": "0x1C00b18A71802d13D93C76Be60B716099CC06C55",
+    "abiNames": ["crosschaintransfer"],
+    "type": "custom",
+    "name": "CrossChainTransfer",
+    "logo": false
+  },
+  {
+    "address": "0x657061bf5D268F70eA3eB1BCBeb078234e5Df19d",
+    "abiNames": ["nftex"],
+    "type": "custom",
+    "name": "OASIS NFT DEX",
+    "logo": false
+  },
+  {
+    "address": "0x3b968177551a2aD9fc3eA06F2F41d88b22a081F7",
+    "abiNames": ["nftexv2"],
+    "type": "custom",
+    "name": "OASIS NFT DEX V2",
+    "logo": false
+  },
+  {
+    "address": "0xE765026Cad648785b080E78700cBF6fa1C050d7C",
+    "abiNames": ["oasisnft"],
+    "type": "custom",
+    "name": "CashCats NFT",
+    "logo": false
+  },
+  {
+    "address": "0x225FCa2A940cd5B18DFb168cD9B7f921C63d7B6E",
+    "abiNames": ["incinerate"],
+    "type": "custom",
+    "name": "Incinerate",
+    "logo": true
+  },
+  {
+    "address": "0x7858F2821F5135DC07F0D70aA8fc5aCa776A19B3",
+    "abiNames": ["viegagepresale"],
+    "type": "custom",
+    "name": "Viegage Presale",
+    "logo": false
+  },
+  {
+    "address": "0xd8DE06b017857A821BA873D4F174B9580454f6c4",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "Viegage Token",
+    "logo": true
+  },
+  {
+    "address": "0x659F04F36e90143fCaC202D4BC36C699C078fC98",
+    "abiNames": ["sep20", "catsluck"],
+    "type": "sep20",
+    "name": "CatsLuck",
+    "logo": true
+  },
+  {
+    "address": "0xd2597a0bde31Ddec2440E256d8AA35eb63F1A9e3",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "Game",
+    "logo": true
+  },
+  {
+    "address": "0x7b82A3b1417Cd21E67f745917a80cC0f53277B8C",
+    "abiNames": ["sep20"],
+    "type": "sep20",
+    "name": "EVE",
+    "logo": true
+  }
+]
