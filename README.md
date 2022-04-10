@@ -1,3 +1,5 @@
+![output teaser](doc/output_teaser.png)
+
 # smartbch-accounting-data
 Tool to pull data that is relevant for financial accounting from a smartbch-node
 
