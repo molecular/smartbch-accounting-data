@@ -76,7 +76,7 @@ api.getBlockHeader().then(async (latest) => {
 	.then(extendEventsWithBlockInfo)
 	.then(appendSyntheticEvents)
 	.then(convertValues)
-	.then(groupEventsByMethod)
+	.then(groupEventsByName)
 	.then(dumpEventsToCSV);
 
 });
@@ -104,7 +104,7 @@ function decodeLogsToEvents(contract, logs: Log[]): any[] {
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
 					abi: contract_abi.type,
-					method: dlog.name,
+					event_name: dlog.name,
 					contract_address: log.address,
 					contract_name: contract.name,
 					...parameters
@@ -163,14 +163,14 @@ function appendSyntheticEvents(events: any[]) {
 	let relevant_events = 
 	events
 	.filter((event) => {
-		return event["contract_name"] == "flexUSD" && ["ChangeMultiplier", "Transfer"].includes(event["method"])
+		return event["contract_name"] == "flexUSD" && ["ChangeMultiplier", "Transfer"].includes(event["event_name"])
 	})
 	.sort((a,b) => {
 		return a.blockTimestamp - b.blockTimestamp
 	})
 	.forEach((event) => {
 		//console.log(event);
-		if (event["method"] == "Transfer") {
+		if (event["event_name"] == "Transfer") {
 			config.my_addresses.forEach((address) => {
 				//console.log("address", address, "to", event["to(address)"], "value", event["value(uint256)"])
 				if (address.toLowerCase() == event["from(address)"].toLowerCase()) {
@@ -183,7 +183,7 @@ function appendSyntheticEvents(events: any[]) {
 				}
 			})
 		}
-		if (event["method"] == "ChangeMultiplier") {
+		if (event["event_name"] == "ChangeMultiplier") {
 			let multiplier = new BigNumber(event["multiplier(uint256)"])
 
 			config.my_addresses.forEach((a) => {
@@ -195,7 +195,7 @@ function appendSyntheticEvents(events: any[]) {
 						blockDate: event.blockDate,
 						blockNumber: event.blockNumber,
 						abi: '<synthetic, interest payment>',
-						method: 'Transfer',
+						event_name: 'Transfer',
 						contract_address: event.contract_address,
 						contract_name: event.contract_name,
 						"from(address)": "",
@@ -219,18 +219,17 @@ function appendSyntheticEvents(events: any[]) {
 	});
 }
 
-function groupEventsByMethod(events: any[]): Promise<any> {
+function groupEventsByName(events: any[]): Promise<any> {
 	// group eventy by their types
-	let events_by_method = events.reduce((o, event) => {
+	let events_by_name = events.reduce((o, event) => {
 		let key = 
-			// event["abi"] + "." + event["method"] // enable when "abiNames": ["FlexUSDImplV2","sep20"] (in contract.json) woreks
-			event["method"]
+			// event["abi"] + "." + event["event_name"] // enable when "abiNames": ["FlexUSDImplV2","sep20"] (in contract.json) woreks
+			event["event_name"]
 		if (!o[key]) o[key] = [];
 		o[key].push(event);
 		return o;
 	}, {});
-	console.log("grouped events by the folowing methods:", Object.keys(events_by_method))
-	return events_by_method;
+	return events_by_name;
 }
 
 function convertValues(events): Promise<any[]> {
@@ -247,18 +246,18 @@ function convertValues(events): Promise<any[]> {
 	return events;
 }
 
-function dumpEventsToCSV(events_by_method) {
+function dumpEventsToCSV(events_by_name) {
 
-	// dump events of each method to "<method>.csv"
-	Object.keys(events_by_method).forEach((method) => {
-		let events_of_single_method = events_by_method[method];  
-		let filename = method + ".csv";
-		stringify(events_of_single_method, { 
+	// dump events of each event name to "<event_name>.csv"
+	Object.keys(events_by_name).forEach((event_name) => {
+		let events = events_by_name[event_name];  
+		let filename = event_name + ".csv";
+		stringify(events, { 
 			header: true,
-			columns: Object.keys(events_of_single_method[0])
+			columns: Object.keys(events[0])
 		})
 		.pipe(createWriteStream(filename));
-		console.log(`${filename}: ${events_of_single_method.length} events of method ${method}`);
+		console.log(`${filename}: ${events.length} ${event_name}-events`);
 	})
 
 }
