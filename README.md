@@ -1,6 +1,7 @@
+# smartbch-accounting-data
+
 ![output teaser](doc/output_teaser.png)
 
-# smartbch-accounting-data
 Tool to pull data that is relevant for financial accounting from a smartbch-node
 
 > Caveat: there are know issues and potential problems. Always double-check the output data somehow and be careful. See section `caveats` below.
