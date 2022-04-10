@@ -21,11 +21,10 @@ const api = new NodeApiService(config.api);
 const bignumberConfig: BigNumber.Config = {
 	ROUNDING_MODE: BigNumber.ROUND_DOWN,
 	DECIMAL_PLACES: 18,
-	EXPONENTIAL_AT: [-500,500]
+	EXPONENTIAL_AT: [-50,50]
 };
 BigNumber.config(bignumberConfig);
-util.bignumberConfig(bignumberConfig);
-
+util.bignumberConfig(bignumberConfig); // TODO: not sure this works
 
 api.getBlockHeader().then(async (latest) => {
 	console.log(`latest block Number: ${latest}, ${"0x" + (latest - 10).toString(16)}`)
@@ -36,6 +35,7 @@ api.getBlockHeader().then(async (latest) => {
 	const contract = contracts.filter(c => c.name === contract_name)[0]
 	console.log("looking at contract", contract);
 
+	// get decimals for contract. TODO: actually use this subsequently instead of "18"
 	api.call({
 		to: contract.address,
 		data: '0x313ce567add4d438edf58b94ff345d7d38c45b17dfc0f947988d7819dca364f9' // sha3("decimals()")
