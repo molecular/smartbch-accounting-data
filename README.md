@@ -15,7 +15,17 @@ While the scope of this project is much larger, it is currently heavily geared t
 
 getting a list of flexUSD interest payments is pretty hard: due to the way the flexUSD contract handles interest payments (using a multiplier approach) there are no separate transactions paying interest to each holder. Instead, a contract-global multiplier is used (and adjusten when interest is paid).
 
+### How this tools extracts data
+
+The general mode of operation of this tool is to use the rpc interface of a smartbch node to call the `queryLogs(...)` function, which will return a list of events emitted by the given contract over it's course of existance. These events are decoded and written to CSV Files (one for each event type)
+
 #### How this tool extracts flexUSD interest payments
+
+For flexUSD contract specifically, there is an event named `ChangeMultiplier`. flexUSD uses a multiplier that is applied to account balances on operations that read or write account balances. That was interest can be paid to all accounts simply by increasing this multiplier. The downside is that there are not separate interest payment transactions to the accounts.
+
+Given an account, this tool chronologically walks through the associated `Transfer` and `ChangeMultiplier` events, tracking the account balance. For each `ChangeMultiplier` event a synthetic event mimiking a `Transfer` event is created (it's named `Transfer`, but abi is `<synthetic, interest payment>`). Those events are mixed with the real `Transfer` events for output to file `Transfer.csv`.
+
+> Caveat: I see a couple of ways this approach could fail. It would probably be better to use `flexUSD.getBalance(<account>)` to arrive at the balance instead of tracking transfers and aggregating the deltas.
 
 ...
 
