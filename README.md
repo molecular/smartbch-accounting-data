@@ -64,9 +64,9 @@ Theres many ways to compile/run a typescript project. One is:
 #> npx ts-node index.ts 
 ```
 
-## Reporting problems
+## Telegram group for Support, Feedback, Discussion
 
-For now, please make an issue on github if you have problems or even if you need help.
+for support, feedback and discussion, please use [telegram group smartbch-accounting-data](https://t.me/smartbch_accounting_data)
 
 ## Caveats, Issues
 
