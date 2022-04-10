@@ -27,8 +27,6 @@ Given an account, this tool chronologically walks through the associated `Transf
 
 > Caveat: I see a couple of ways this approach could fail. It would probably be better to use `flexUSD.getBalance(<account>)` to arrive at the balance instead of tracking transfers and aggregating the deltas.
 
-...
-
 ## Usage
 
 ### Installation
