@@ -93,6 +93,7 @@ api.getBlockHeader().then(async (latest) => {
 		.then((events: any[]) => convertValues(contract, events))
 	}))
 	.then(flattenArrays)
+	.then(sortChronologically)
 	.then(groupEventsByName)
 	.then(dumpEventsToCSV);
 
@@ -172,6 +173,12 @@ function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 				};
 			}
 		});
+	});
+}
+
+function sortChronologically(events: any[]) {
+	return events.sort((a,b) => {
+		return a.blockTimestamp - b.blockTimestamp
 	});
 }
 
@@ -267,6 +274,9 @@ function groupEventsByName(events: any[]): Promise<any> {
 		let key = 
 			// event["abi"] + "." + event["event_name"] // enable when "abiNames": ["FlexUSDImplV2","sep20"] (in contract.json) woreks
 			event["event_name"]
+		if (config.output.separate_file_per_contract) {
+			key += "." + event["contract_name"]
+		}
 		if (!o[key]) o[key] = [];
 		o[key].push(event);
 		return o;
