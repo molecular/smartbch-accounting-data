@@ -1,7 +1,8 @@
 import { config } from "./config";
-import contracts from "./assets/config/contract.json";
+import config_contracts from "./assets/config/contract.json";
 import contract_abis from "./assets/config/contract-abi.json";
 
+import Web3 from "web3";
 import { NodeApiService } from './services/api/node-api.service';
 
 import { Block, Transaction } from 'web3-eth';
@@ -31,28 +32,13 @@ api.getBlockHeader().then(async (latest) => {
 	const blocks_per_second = 5;
 	//const blocks = 30*24*60*60 / blocks_per_second;
 
-	const contract_name = 'flexUSD'
-	const contract = contracts.filter(c => c.name === contract_name)[0]
-	console.log("looking at contract", contract);
-
-	// get decimals for contract. TODO: actually use this subsequently instead of "18"
-	api.call({
-		to: contract.address,
-		data: '0x313ce567add4d438edf58b94ff345d7d38c45b17dfc0f947988d7819dca364f9' // sha3("decimals()")
-	}, 'uint8').then((result) => {
-		console.log(contract_name + ".decimals():", result);
-	})
-
 	const start_block = 
 		"0x1";
 		//util.toHex(latest-blocks);
 
-	const end_block = 
-		util.toHex(latest+1);
+	const end_block = util.toHex(latest+1);
 
-	const max_count = "0x1000";
-
-	let events: any[] = [];
+	const max_count = "0x0"; // 0x0 == no limit
 
 	// list of topics to query events for
 	let topics: string[][] = [
@@ -61,31 +47,70 @@ api.getBlockHeader().then(async (latest) => {
 	// append my_addresses from config
 	topics = topics.concat(config.my_addresses.map((a) => [util.convertAddressToTopic(a)]));
 
-	// aggregate queryLogs results (event lists) for each topic
-	Promise.all(topics.map((topic) => {
-		return api.queryLogs(
-			contract.address,
-			topic,
-			start_block, end_block, max_count
-		)
+	let contract_names: string[] = [
+		"flexUSD",
+		"Mist",
+    //"MIST Router",
+    //"MIST MasterChef",
+    //"MISTbar",
+	]
+	let contracts = config_contracts.filter(c => contract_names.includes(c.name));
+
+	// extend contracts with values from some method calls (decimals())
+	var methods = [
+		{name: "decimals", return_type: 'uint8'},
+		{name: "symbol", return_type: 'string'},
+	];
+	Promise.all(methods.map((method) => {
+		let call_string = method.name + "()";
+		return Promise.all(contracts.map((contract) => {
+			return api.call(
+				{
+					to: contract.address,
+					data: "" + Web3.utils.sha3(call_string)
+				}, method.return_type
+			)
+			.then((result) => {
+				contract[call_string] = result;
+				return contract;
+			});
+		}))
+	}));
+
+	// process and aggregate queryLogs results for each combination of contract and topic
+	Promise.all(contracts.map((contract) => {
+		return Promise.all(topics.map((topic) => {
+			return api.queryLogs(
+				contract.address,
+				topic,
+				start_block, end_block, max_count
+			)
+		}))
+		.then(flattenArrays)
+		.then((logs: Log[]) => decodeLogsToEvents(contract, logs))
+		.then(extendEventsWithBlockInfo)
+		.then((events: any[]) => appendSyntheticEvents(contract, events))
+		.then((events: any[]) => convertValues(contract, events))
 	}))
-	.then((event_arrays: any[][]) => { // flatten arrays
-		return event_arrays.reduce((o, i) => { return o.concat(i); }, [])
-	})
-	.then((logs: Log[]) => decodeLogsToEvents(contract, logs))
-	.then(extendEventsWithBlockInfo)
-	.then(appendSyntheticEvents)
-	.then(convertValues)
+	.then(flattenArrays)
 	.then(groupEventsByName)
 	.then(dumpEventsToCSV);
 
 });
 
+function flattenArrays<T>(arrays: T[][]): T[] {
+	return arrays.reduce((o, i) => { return o.concat(i); }, [])
+}
+
+function logResults(result: any) {
+	console.log(result);
+	return result;
+}
+
 function decodeLogsToEvents(contract, logs: Log[]): any[] {
 	let rc: any[] = [];
 	contract_abis.filter(abi => contract.abiNames.map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase())).
 	forEach((contract_abi) => {
-		//console.log("contract_abi:", contract_abi);
 		let event_decoder = new EventDecoder(contract_abi.abi);
 
 		let events = logs.map((log) => {
@@ -107,6 +132,7 @@ function decodeLogsToEvents(contract, logs: Log[]): any[] {
 					event_name: dlog.name,
 					contract_address: log.address,
 					contract_name: contract.name,
+					contract_symbol: contract["symbol()"],
 					...parameters
 				}
 			}
@@ -150,20 +176,22 @@ function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 }
 
 // create synthetic events from existing events like flexUSD interest payments from ChangeMultiplier events
-function appendSyntheticEvents(events: any[]) {
-	const decimals = 18 // temp, acutall use api.call() (sep20.decimals()) to determinge case-by-case
+function appendSyntheticEvents(contract, events: any[]) {
 
-	let previousMultiplier = new BigNumber(1E18);
+	// setup balance tracking
 	let balance_by_address = config.my_addresses.reduce((o,a) => {
 		o[a] = new BigNumber(0.0);
 		return o;
 	}, {});
-	console.log("balances", balance_by_address);
+	//console.log("balances", balance_by_address);
+
+	// iterate through events in chronological order tracking balance and generating <synthetic> events
+	let previousMultiplier = new BigNumber(`1E${contract["decimals()"]}`);
 	let created_events: any[] = [];
 	let relevant_events = 
 	events
 	.filter((event) => {
-		return event["contract_name"] == "flexUSD" && ["ChangeMultiplier", "Transfer"].includes(event["event_name"])
+		return event["contract_name"] == contract.name && ["ChangeMultiplier", "Transfer"].includes(event["event_name"])
 	})
 	.sort((a,b) => {
 		return a.blockTimestamp - b.blockTimestamp
@@ -198,6 +226,7 @@ function appendSyntheticEvents(events: any[]) {
 						event_name: 'Transfer',
 						contract_address: event.contract_address,
 						contract_name: event.contract_name,
+						contract_symbol: event.contract_symbol,
 						"from(address)": "",
 						"to(address)": a,
 						"value(uint256)": delta,
@@ -210,13 +239,26 @@ function appendSyntheticEvents(events: any[]) {
 			previousMultiplier = multiplier;
 		}
 	});
-	config.my_addresses.forEach((a) => {
-		console.log(a, ": ", balance_by_address[a].dividedBy(1E18).toFixed(18));
-	})
-	//console.log("last created event", created_events[created_events.length-1])
+	// config.my_addresses.forEach((a) => {
+	// 	console.log(a, ": ", balance_by_address[a].dividedBy(1E18).toFixed(18));
+	// })
 	return events.concat(created_events).sort((a,b) => {
 		return a.blockTimestamp - b.blockTimestamp
 	});
+}
+
+function convertValues(contract, events): Promise<any[]> {
+	events.forEach((event) => {
+		Object.keys(event).forEach((key) => {
+			if (key.indexOf("(uint256)") > 0) {
+				if (event[key] !== undefined ) {
+					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals()"]}`)).toFixed(config.output.decimals)
+					event[key] = new BigNumber(event[key]).integerValue()
+				}
+			}
+		});
+	});
+	return events;
 }
 
 function groupEventsByName(events: any[]): Promise<any> {
@@ -232,20 +274,6 @@ function groupEventsByName(events: any[]): Promise<any> {
 	return events_by_name;
 }
 
-function convertValues(events): Promise<any[]> {
-	events.forEach((event) => {
-		Object.keys(event).forEach((key) => {
-			if (key.indexOf("(uint256)") > 0) {
-				if (event[key] !== undefined ) {
-					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${config.output.divider_e}`)).toFixed(config.output.decimals)
-					event[key] = new BigNumber(event[key]).integerValue()
-				}
-			}
-		});
-	});
-	return events;
-}
-
 function dumpEventsToCSV(events_by_name) {
 
 	// dump events of each event name to "<event_name>.csv"
@@ -257,7 +285,7 @@ function dumpEventsToCSV(events_by_name) {
 			columns: Object.keys(events[0])
 		})
 		.pipe(createWriteStream(filename));
-		console.log(`${filename}: ${events.length} ${event_name}-events`);
+		console.log(`wrote ${filename}: ${events.length} ${event_name}-events`);
 	})
 
 }
