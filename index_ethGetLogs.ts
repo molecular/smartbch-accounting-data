@@ -44,8 +44,9 @@ api.getBlockHeader().then(async (latest) => {
 
 	do_2_ethGetLogs(start_block, end_block, max_count);
 
-	//console.log(await contract_manager.getContractByAddress("0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"));
+	console.log(await contract_manager.getContractByAddress("0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"));
 	//console.log(await contract_manager.getContractByAddress("0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154")); // unkown
+	console.log(await contract_manager.getContractByAddress("0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"));
 
 
 });
@@ -66,13 +67,13 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	}))
 	.then(flattenArrays)
 	.then(decodeLogsToEvents)
-//	.then(extendEventsWithBlockInfo)
+	.then(extendEventsWithBlockInfo)
 	.then(logToConsole)
 	// .then(appendSyntheticEvents)
 	// .then((events: any[]) => convertValues(contract, events))
-	// .then(sortChronologically)
-	// .then(groupEventsByName)
-	// .then(dumpEventsToCSV);
+	.then(sortChronologically)
+	.then(groupEventsByName)
+	.then(dumpEventsToCSV);
 
 }
 
@@ -90,48 +91,50 @@ function logResults(result: any) {
 	return result;
 }
 
-function decodeLogsToEvents(logs: Log[]): any[] {
+function decodeLogsToEvents(logs: Log[]) {
 	//let rc: any[] = [];
 	// TODO: use cache (by address) for contract, contract_abi and/or event_decoder
-	return logs.map(async (log) => {
-		let contract = contract_manager.getContractByAddress(log.address)
-		console.log("contract: ", contract)
-		if (contract) {
-			let contract_abi = contract_abis.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))[0]
-			let event_decoder = new EventDecoder(contract_abi.abi);
-			let dlog = event_decoder.decodeLog(log);
-			if (!dlog || dlog.name === undefined) {
-				console.log("unable to decode log:", log);
-				if (dlog) 
-					console.log("unable to decode dlog:", dlog);
-			}
-			//assert.equal(log.address, contract.address);
-			if (dlog) {
-				let parameters = dlog.events.reduce((o, e: IDecodedValue) => {
-					o[`${e.name}(${e.type})`] = e.value;
-					return o;
-				}, {});
+	return Promise.all(logs.map(async (log) => {
+		return contract_manager.getContractByAddress(log.address)
+		.then((contract) => {
+			console.log("contract: ", contract)
+			if (contract) {
+				let contract_abi = contract_abis.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))[0]
+				let event_decoder = new EventDecoder(contract_abi.abi);
+				let dlog = event_decoder.decodeLog(log);
+				if (!dlog || dlog.name === undefined) {
+					console.log("unable to decode log:", log);
+					if (dlog) 
+						console.log("unable to decode dlog:", dlog);
+				}
+				//assert.equal(log.address, contract.address);
+				if (dlog) {
+					let parameters = dlog.events.reduce((o, e: IDecodedValue) => {
+						o[`${e.name}(${e.type})`] = e.value;
+						return o;
+					}, {});
+					return {
+						blockNumber: util.parseHex(""+log.blockNumber),
+						abi: contract_abi.type,
+						event_name: dlog.name,
+						contract_address: log.address,
+						contract_name: contract["name"],
+						contract_symbol: contract["symbol"],
+						...parameters
+					}
+				}
+			} else { // no contract
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
-					abi: contract_abi.type,
-					event_name: dlog.name,
+					abi: "<unknown>",
+					event_name: "<unknown>",
 					contract_address: log.address,
-					contract_name: contract["name"],
-					contract_symbol: contract["symbol()"],
-					...parameters
+					contract_name: "<unknown>",
+					contract_symbol: "",
 				}
 			}
-		} else { // no contract
-			return {
-				blockNumber: util.parseHex(""+log.blockNumber),
-				abi: "<unknown>",
-				event_name: "<unknown>",
-				contract_address: log.address,
-				contract_name: "<unknown>",
-				contract_symbol: "",
-			}
-		}
-	});
+		});
+	}));
 }
 
 // look up blocks to set blockTimestamp, blockDate on each transfer

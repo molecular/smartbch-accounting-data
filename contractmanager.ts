@@ -21,25 +21,25 @@ export class ContractManager {
 
 	contracts_by_address = {};
 
-  constructor(api: NodeApiService) {
-  	this.api = api;
-  	// import contracts and contract_abis from json files
-  	this.contracts = json_contracts;
-  	//this.contract_abis = json_contract_abis;
+	constructor(api: NodeApiService) {
+		this.api = api;
+		// import contracts and contract_abis from json files
+		//this.contracts = json_contracts;
+		//this.contract_abis = json_contract_abis;
 
-  	// index contracts by address
-  	this.contracts.forEach((contract) => {
-  		this.addContract(contract)
-  	});
-  }
+		// index contracts by address
+		this.contracts.forEach((contract) => {
+			this.addContract(contract)
+		});
+	}
 
-  addContract(contract: Contract) {
-  	this.contracts_by_address[contract.address] = contract;
-  }
+	addContract(contract: Contract) {
+		this.contracts_by_address[contract.address.toLowerCase()] = contract;
+	}
 
-  contractFromChain(address: string): Contract {
-	 	var methods = [
-	 		{name: "name", return_type: 'string'},
+	public async contractFromChain(address: string): Promise<Contract> {
+		var methods = [
+			{name: "name", return_type: 'string'},
 			{name: "decimals", return_type: 'uint8'},
 			{name: "symbol", return_type: 'string'},
 		];
@@ -47,7 +47,7 @@ export class ContractManager {
 			address,
 			abiNames: ['sep20'] // best-effort assumption, worst that can happen is log decoding fail
 		}
-		Promise.all(methods.map((method) => {
+		return Promise.all(methods.map((method) => {
 			let call_string = method.name + "()";
 			return this.api.call(
 				{
@@ -58,19 +58,19 @@ export class ContractManager {
 			.then((result) => {
 				contract[method.name] = result;
 			});
-		}))
-		return contract;
-  }
+		})).then((result) => {
+			this.addContract(contract);
+			return contract;
+		});
+	}
 
-  public getContractByAddress(address: string): Contract {
-  	address = address.toLowerCase();
-  	let contract = this.contracts_by_address[address]
-  	if (!contract) {
-  		contract = this.contractFromChain(address)
- 			this.addContract(contract);
- 			return contract;
-  	} else {
-	  	return contract;
-	  }
-  }
+	public async getContractByAddress(address: string): Promise<Contract> {
+		address = address.toLowerCase();
+		let c = this.contracts_by_address[address]
+		if (!c) {
+			return this.contractFromChain(address)
+		} else {
+			return c;
+		}
+	}
 }
