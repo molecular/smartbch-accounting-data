@@ -369,6 +369,11 @@ export class Web3Adapter implements NodeAdapter{
     return this.apiConnector.queryLogs(address, data, start, end, limit);
   }
 
+  getLogs(topics: (string | null)[], start: string, end: string, limit: string) {
+    if(!this.apiConnector) return Promise.reject();
+    return this.apiConnector.getLogs(topics, start, end, limit);
+  }
+
   queryAddressLogs(address: string): Promise<Log[]> | undefined {
     return this.apiConnector?.queryAddressLogs(address);
   }

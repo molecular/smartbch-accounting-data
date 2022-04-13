@@ -1,5 +1,4 @@
 import { config } from "./config";
-import config_contracts from "./assets/config/contract.json";
 import contract_abis from "./assets/config/contract-abi.json";
 
 import Web3 from "web3";
@@ -15,8 +14,11 @@ import { createWriteStream } from 'fs';
 import { stringify } from 'csv-stringify';
 import { BigNumber } from 'bignumber.js';
 
+import { Contract, ContractManager } from './contractmanager'
+
 const util = new UtilHelperService();
 const api = new NodeApiService(config.api);
+const contract_manager = new ContractManager(api);
 
 // configure BigNumber classes (here and in util module)
 const bignumberConfig: BigNumber.Config = {
@@ -40,71 +42,46 @@ api.getBlockHeader().then(async (latest) => {
 
 	const max_count = "0x0"; // 0x0 == no limit
 
-	do_1_queryLogs(start_block, end_block, max_count);
+	do_2_ethGetLogs(start_block, end_block, max_count);
+
+	//console.log(await contract_manager.getContractByAddress("0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"));
+	//console.log(await contract_manager.getContractByAddress("0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154")); // unkown
+
 
 });
 
-function do_1_queryLogs(start_block, end_block, max_count) {
-	// list of topics to query events for
-	let topics: string[][] = [
-		["0xd1ac89bfc464ce49c894c4e2379f1ca2b062aff1a640e929764ac1157fa13f0f"], // flexUSD.ChangeMultiplier topic
-	];
+function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// append my_addresses from config
-	topics = topics.concat(config.my_addresses.map((a) => [util.convertAddressToTopic(a)]));
-
-	let contract_names: string[] = [
-		"flexUSD",
-		"Mist",
-    //"MIST Router",
-    //"MIST MasterChef",
-    //"MISTbar",
+	let my_address_topics = config.my_addresses.map((address) => util.convertAddressToTopic(address));
+	let topic_sets = [
+//		["0xd1ac89bfc464ce49c894c4e2379f1ca2b062aff1a640e929764ac1157fa13f0f"],
+//		[util.convertAddressToTopic(config.my_addresses[0])],
+		[null, my_address_topics],
+		[null, null, my_address_topics],
+		[null, null, null, my_address_topics],
 	]
-	let contracts = config_contracts.filter(c => contract_names.includes(c.name));
 
-	// extend contracts with values from some method calls (decimals())
-	var methods = [
-		{name: "decimals", return_type: 'uint8'},
-		{name: "symbol", return_type: 'string'},
-	];
-	Promise.all(methods.map((method) => {
-		let call_string = method.name + "()";
-		return Promise.all(contracts.map((contract) => {
-			return api.call(
-				{
-					to: contract.address,
-					data: "" + Web3.utils.sha3(call_string)
-				}, method.return_type
-			)
-			.then((result) => {
-				contract[call_string] = result;
-				return contract;
-			});
-		}))
-	}));
-
-	// process and aggregate queryLogs results for each combination of contract and topic
-	Promise.all(contracts.map((contract) => {
-		return Promise.all(topics.map((topic) => {
-			return api.queryLogs(
-				contract.address,
-				topic,
-				start_block, end_block, max_count
-			)
-		}))
-		.then(flattenArrays)
-		.then((logs: Log[]) => decodeLogsToEvents(contract, logs))
-		.then(extendEventsWithBlockInfo)
-		.then((events: any[]) => appendSyntheticEvents(contract, events))
-		.then((events: any[]) => convertValues(contract, events))
+	Promise.all(topic_sets.map((topics) => {
+		return api.getLogs(topics, start_block, end_block, max_count)
 	}))
 	.then(flattenArrays)
-	.then(sortChronologically)
-	.then(groupEventsByName)
-	.then(dumpEventsToCSV);
+	.then(decodeLogsToEvents)
+//	.then(extendEventsWithBlockInfo)
+	.then(logToConsole)
+	// .then(appendSyntheticEvents)
+	// .then((events: any[]) => convertValues(contract, events))
+	// .then(sortChronologically)
+	// .then(groupEventsByName)
+	// .then(dumpEventsToCSV);
 
 }
 
-function flattenArrays<T>(arrays: T[][]): T[] {
+function logToConsole(result) {
+	console.log(result);
+	return result;
+}
+
+function flattenArrays(arrays) {
 	return arrays.reduce((o, i) => { return o.concat(i); }, [])
 }
 
@@ -113,13 +90,15 @@ function logResults(result: any) {
 	return result;
 }
 
-function decodeLogsToEvents(contract, logs: Log[]): any[] {
-	let rc: any[] = [];
-	contract_abis.filter(abi => contract.abiNames.map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase())).
-	forEach((contract_abi) => {
-		let event_decoder = new EventDecoder(contract_abi.abi);
-
-		let events = logs.map((log) => {
+function decodeLogsToEvents(logs: Log[]): any[] {
+	//let rc: any[] = [];
+	// TODO: use cache (by address) for contract, contract_abi and/or event_decoder
+	return logs.map(async (log) => {
+		let contract = contract_manager.getContractByAddress(log.address)
+		console.log("contract: ", contract)
+		if (contract) {
+			let contract_abi = contract_abis.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))[0]
+			let event_decoder = new EventDecoder(contract_abi.abi);
 			let dlog = event_decoder.decodeLog(log);
 			if (!dlog || dlog.name === undefined) {
 				console.log("unable to decode log:", log);
@@ -137,15 +116,22 @@ function decodeLogsToEvents(contract, logs: Log[]): any[] {
 					abi: contract_abi.type,
 					event_name: dlog.name,
 					contract_address: log.address,
-					contract_name: contract.name,
+					contract_name: contract["name"],
 					contract_symbol: contract["symbol()"],
 					...parameters
 				}
 			}
-		});
-		rc = rc.concat(events);
+		} else { // no contract
+			return {
+				blockNumber: util.parseHex(""+log.blockNumber),
+				abi: "<unknown>",
+				event_name: "<unknown>",
+				contract_address: log.address,
+				contract_name: "<unknown>",
+				contract_symbol: "",
+			}
+		}
 	});
-	return rc;
 }
 
 // look up blocks to set blockTimestamp, blockDate on each transfer

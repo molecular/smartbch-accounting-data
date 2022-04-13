@@ -20,6 +20,10 @@ export class UtilHelperService {
     return '0x' + data.slice(data.length - 40, data.length)
   }
 
+  public convertAddressToTopic(data: string) {
+    return "0x000000000000000000000000" + data.substring(2)
+  }
+
   public getGasPercentageUsed(block: Block) {
     return ( (block.gasUsed / block.gasLimit) * 100).toFixed(5)
   }
@@ -38,7 +42,4 @@ export class UtilHelperService {
     .replace(/(\d{3}(?!.*\.|$))/g, '$1,').split('').reverse().join('')
   }
 
-  public convertAddressToTopic(data: string) {
-    return "0x000000000000000000000000" + data.substring(2)
-  }
 }

@@ -287,6 +287,11 @@ export class Web3Connector {
     return this.web3.sbch.queryLogs(address, data, start, end, limit);
   }
 
+  getLogs(topics: (string | null)[], start: string, end: string, limit: string) {
+    if(!this.web3) return Promise.reject();
+    return this.web3.sbch.getLogs({fromBlock: start, toBlock: end, topics: topics});
+  }
+
   async queryAddressLogs(address: string, start?: string, end?: string) {
     if(!this.web3) return Promise.reject();
     // const contract = new this.web3.eth.Contract([], address);
