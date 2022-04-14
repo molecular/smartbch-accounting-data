@@ -1,5 +1,4 @@
 import { config } from "./config";
-import config_contracts from "./assets/config/contract.json";
 import contract_abis from "./assets/config/contract-abi.json";
 
 import Web3 from "web3";
@@ -15,8 +14,11 @@ import { createWriteStream } from 'fs';
 import { stringify } from 'csv-stringify';
 import { BigNumber } from 'bignumber.js';
 
+import { Contract, ContractManager } from './contractmanager'
+
 const util = new UtilHelperService();
 const api = new NodeApiService(config.api);
+const contract_manager = new ContractManager(api);
 
 // configure BigNumber classes (here and in util module)
 const bignumberConfig: BigNumber.Config = {
@@ -40,71 +42,50 @@ api.getBlockHeader().then(async (latest) => {
 
 	const max_count = "0x0"; // 0x0 == no limit
 
-	do_1_queryLogs(start_block, end_block, max_count);
+	do_2_ethGetLogs(start_block, end_block, max_count);
+	//contract_manager.loadContracts(['0x24f011f12ea45afadb1d4245ba15dcab38b43d13']);
+
 
 });
 
-function do_1_queryLogs(start_block, end_block, max_count) {
-	// list of topics to query events for
-	let topics: string[][] = [
-		["0xd1ac89bfc464ce49c894c4e2379f1ca2b062aff1a640e929764ac1157fa13f0f"], // flexUSD.ChangeMultiplier topic
-	];
+function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// append my_addresses from config
-	topics = topics.concat(config.my_addresses.map((a) => [util.convertAddressToTopic(a)]));
-
-	let contract_names: string[] = [
-		"flexUSD",
-		"Mist",
-    //"MIST Router",
-    //"MIST MasterChef",
-    //"MISTbar",
+	let my_address_topics = config.my_addresses.map((address) => util.convertAddressToTopic(address));
+	let sets = [
+		{ contract_address: "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72", topics: [Web3.utils.sha3("ChangeMultiplier(uint256)")] },
+		{ contract_address: null, topics: [null, my_address_topics] },
+		{ contract_address: null, topics: [null, null, my_address_topics] },
+		{ contract_address: null, topics: [null, null, null, my_address_topics] },
 	]
-	let contracts = config_contracts.filter(c => contract_names.includes(c.name));
 
-	// extend contracts with values from some method calls (decimals())
-	var methods = [
-		{name: "decimals", return_type: 'uint8'},
-		{name: "symbol", return_type: 'string'},
-	];
-	Promise.all(methods.map((method) => {
-		let call_string = method.name + "()";
-		return Promise.all(contracts.map((contract) => {
-			return api.call(
-				{
-					to: contract.address,
-					data: "" + Web3.utils.sha3(call_string)
-				}, method.return_type
-			)
-			.then((result) => {
-				contract[call_string] = result;
-				return contract;
-			});
-		}))
-	}));
-
-	// process and aggregate queryLogs results for each combination of contract and topic
-	Promise.all(contracts.map((contract) => {
-		return Promise.all(topics.map((topic) => {
-			return api.queryLogs(
-				contract.address,
-				topic,
-				start_block, end_block, max_count
-			)
-		}))
-		.then(flattenArrays)
-		.then((logs: Log[]) => decodeLogsToEvents(contract, logs))
-		.then(extendEventsWithBlockInfo)
-		.then((events: any[]) => appendSyntheticEvents(contract, events))
-		.then((events: any[]) => convertValues(contract, events))
+	Promise.all(sets.map((set) => {
+		return api.getLogs(set.contract_address, set.topics, start_block, end_block, max_count)
 	}))
 	.then(flattenArrays)
+//	.then(logToConsole)
+	.then((logs) => {
+		return contract_manager.loadContracts(logs.map(log => log.address))
+		.then(() => { return logs; });
+	})
+	// .then((events) => {
+	// 	return events.filter((event) => event.address == '0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154');
+	// })
+	.then(decodeLogsToEvents)
+	.then(extendEventsWithBlockInfo)
+	.then(appendSyntheticEvents)
+	.then(convertValues)
 	.then(sortChronologically)
 	.then(groupEventsByName)
 	.then(dumpEventsToCSV);
 
 }
 
-function flattenArrays<T>(arrays: T[][]): T[] {
+function logToConsole(result) {
+	console.log(result);
+	return result;
+}
+
+function flattenArrays(arrays) {
 	return arrays.reduce((o, i) => { return o.concat(i); }, [])
 }
 
@@ -113,20 +94,13 @@ function logResults(result: any) {
 	return result;
 }
 
-function decodeLogsToEvents(contract, logs: Log[]): any[] {
-	let rc: any[] = [];
-	contract_abis.filter(abi => contract.abiNames.map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase())).
-	forEach((contract_abi) => {
-		let event_decoder = new EventDecoder(contract_abi.abi);
-
-		let events = logs.map((log) => {
+function decodeLogsToEvents(logs: Log[]) {
+	return Promise.all(logs.map(async (log) => {
+		let contract = contract_manager.getContractByAddress(log.address)
+		if (contract) {
+			let contract_abi = contract_abis.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))[0]
+			let event_decoder = new EventDecoder(contract_abi.abi);
 			let dlog = event_decoder.decodeLog(log);
-			if (!dlog || dlog.name === undefined) {
-				console.log("unable to decode log:", log);
-				if (dlog) 
-					console.log("unable to decode dlog:", dlog);
-			}
-			//assert.equal(log.address, contract.address);
 			if (dlog) {
 				let parameters = dlog.events.reduce((o, e: IDecodedValue) => {
 					o[`${e.name}(${e.type})`] = e.value;
@@ -134,18 +108,44 @@ function decodeLogsToEvents(contract, logs: Log[]): any[] {
 				}, {});
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
+					transaction_hash: log.transactionHash,
+					transaction_index: log.transactionIndex,
 					abi: contract_abi.type,
 					event_name: dlog.name,
 					contract_address: log.address,
-					contract_name: contract.name,
-					contract_symbol: contract["symbol()"],
+					contract_name: contract["name"],
+					contract_symbol: contract["symbol"],
 					...parameters
 				}
+			} else { // decode fail
+				console.log(`decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Can't decode events`);
+				console.log(log)
+				return {
+					blockNumber: util.parseHex(""+log.blockNumber),
+					transaction_hash: log.transactionHash,
+					transaction_index: log.transactionIndex,
+					abi: "<unknwown>",
+					event_name: "<unknown>",
+					contract_address: log.address,
+					contract_name: contract["name"],
+					contract_symbol: contract["symbol"],
+				}
+
 			}
-		});
-		rc = rc.concat(events);
-	});
-	return rc;
+		} else { // no contract
+			console.log("no contract for log.address", log.address);
+			return {
+				blockNumber: util.parseHex(""+log.blockNumber),
+				transaction_hash: log.transactionHash,
+				transaction_index: log.transactionIndex,
+				abi: "<unknown>",
+				event_name: "<unknown>",
+				contract_address: log.address,
+				contract_name: "<unknown>",
+				contract_symbol: "",
+			}
+		}
+	}));
 }
 
 // look up blocks to set blockTimestamp, blockDate on each transfer
@@ -162,7 +162,9 @@ function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 		},{});
 
 		// extend event with block info
-		return events.map((event) => {
+		return events
+		.filter((event) => event)
+		.map((event) => {
 			if (event && event.blockNumber) {
 				let block = blocks_by_number[event.blockNumber]
 				return {
@@ -188,69 +190,87 @@ function sortChronologically(events: any[]) {
 }
 
 // create synthetic events from existing events like flexUSD interest payments from ChangeMultiplier events
-function appendSyntheticEvents(contract, events: any[]) {
+function appendSyntheticEvents(events: any[]) {
 
-	// setup balance tracking
-	let balance_by_address = config.my_addresses.reduce((o,a) => {
-		o[a] = new BigNumber(0.0);
-		return o;
-	}, {});
-	//console.log("balances", balance_by_address);
-
-	// iterate through events in chronological order tracking balance and generating <synthetic> events
-	let previousMultiplier = new BigNumber(`1E${contract["decimals()"]}`);
 	let created_events: any[] = [];
-	let relevant_events = 
-	events
-	.filter((event) => {
-		return event["contract_name"] == contract.name && ["ChangeMultiplier", "Transfer"].includes(event["event_name"])
-	})
-	.sort((a,b) => {
-		return a.blockTimestamp - b.blockTimestamp
-	})
-	.forEach((event) => {
-		//console.log(event);
-		if (event["event_name"] == "Transfer") {
-			config.my_addresses.forEach((address) => {
-				//console.log("address", address, "to", event["to(address)"], "value", event["value(uint256)"])
-				if (address.toLowerCase() == event["from(address)"].toLowerCase()) {
-					balance_by_address[address] = balance_by_address[address].integerValue().minus(new BigNumber(event["value(uint256)"]).integerValue());
-					event["<balance>(uint256)"] = balance_by_address[address]
-				}
-				if (address.toLowerCase() == event["to(address)"].toLowerCase()) {
-					balance_by_address[address] = balance_by_address[address].integerValue().plus(new BigNumber(event["value(uint256)"]).integerValue());
-					event["<balance>(uint256)"] = balance_by_address[address]
-				}
-			})
-		}
-		if (event["event_name"] == "ChangeMultiplier") {
-			let multiplier = new BigNumber(event["multiplier(uint256)"])
 
-			config.my_addresses.forEach((a) => {
-				let new_balance = balance_by_address[a].multipliedBy(multiplier).dividedBy(previousMultiplier).integerValue();
-				let delta = new_balance.minus(balance_by_address[a])
-				if (!delta.isEqualTo(0)) {
-					created_events.push({
-						blockTimestamp: event.blockTimestamp,
-						blockDate: event.blockDate,
-						blockNumber: event.blockNumber,
-						abi: '<synthetic, interest payment>',
-						event_name: 'Transfer',
-						contract_address: event.contract_address,
-						contract_name: event.contract_name,
-						contract_symbol: event.contract_symbol,
-						"from(address)": "",
-						"to(address)": a,
-						"value(uint256)": delta,
-						"<balance>(uint256)": new_balance
-					});
-					balance_by_address[a] = new_balance;
-				}
-			})
+	// for each contract
+	Object.keys(
+		events
+		.filter((event) => {
+			return "Transfer" == event["event_name"];
+		})
+		.reduce((o, e) => {
+			o[e.contract_address] = true
+			return o;
+		}, {})
+	)
+	.forEach((contract_address) => {
+		let contract = contract_manager.getContractByAddress(contract_address);
 
-			previousMultiplier = multiplier;
-		}
-	});
+		// setup balance tracking
+		let balance_by_address = config.my_addresses.reduce((o,a) => {
+			o[a] = new BigNumber(0.0);
+			return o;
+		}, {});
+		console.log("contract", contract.address, "balances", balance_by_address);
+
+		// iterate through events in chronological order tracking balance and generating <synthetic> events
+		let previousMultiplier = new BigNumber(`1E${contract["decimals"]}`);
+		let relevant_events = 
+		events
+		.filter((event) => {
+			return event["contract_name"] == contract.name && ["ChangeMultiplier", "Transfer"].includes(event["event_name"])
+		})
+		.sort((a,b) => {
+			return a.blockTimestamp - b.blockTimestamp
+		})
+		.forEach((event) => {
+			//console.log(event);
+			if (event["event_name"] == "Transfer") {
+				config.my_addresses.forEach((address) => {
+					//console.log("address", address, "to", event["to(address)"], "value", event["value(uint256)"])
+					if (address.toLowerCase() == event["from(address)"].toLowerCase()) {
+						balance_by_address[address] = balance_by_address[address].integerValue().minus(new BigNumber(event["value(uint256)"]).integerValue());
+						event["<balance>(uint256)"] = balance_by_address[address]
+					}
+					if (address.toLowerCase() == event["to(address)"].toLowerCase()) {
+						balance_by_address[address] = balance_by_address[address].integerValue().plus(new BigNumber(event["value(uint256)"]).integerValue());
+						event["<balance>(uint256)"] = balance_by_address[address]
+					}
+				})
+			}
+			if (event["event_name"] == "ChangeMultiplier") {
+				let multiplier = new BigNumber(event["multiplier(uint256)"])
+
+				config.my_addresses.forEach((a) => {
+					let new_balance = balance_by_address[a].multipliedBy(multiplier).dividedBy(previousMultiplier).integerValue();
+					let delta = new_balance.minus(balance_by_address[a])
+					if (!delta.isEqualTo(0)) {
+						created_events.push({
+							blockTimestamp: event.blockTimestamp,
+							blockDate: event.blockDate,
+							blockNumber: event.blockNumber,
+							transaction_hash: event.transaction_hash,
+							transaction_index: event.transaction_index,
+							abi: '<synthetic, interest payment>',
+							event_name: 'Transfer',
+							contract_address: event.contract_address,
+							contract_name: event.contract_name,
+							contract_symbol: event.contract_symbol,
+							"from(address)": "",
+							"to(address)": a,
+							"value(uint256)": delta,
+							"<balance>(uint256)": new_balance
+						});
+						balance_by_address[a] = new_balance;
+					}
+				})
+
+				previousMultiplier = multiplier;
+			}
+		});
+	}); 
 	// config.my_addresses.forEach((a) => {
 	// 	console.log(a, ": ", balance_by_address[a].dividedBy(1E18).toFixed(18));
 	// })
@@ -259,12 +279,13 @@ function appendSyntheticEvents(contract, events: any[]) {
 	});
 }
 
-function convertValues(contract, events): Promise<any[]> {
-	events.forEach((event) => {
+async function convertValues(events): Promise<any[]> {
+	events.forEach(async (event) => {
+		let contract = await contract_manager.getContractByAddress(event.contract_address);
 		Object.keys(event).forEach((key) => {
 			if (key.indexOf("(uint256)") > 0) {
 				if (event[key] !== undefined ) {
-					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals()"]}`)).toFixed(config.output.decimals)
+					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals"]}`)).toFixed(config.output.decimals)
 					event[key] = new BigNumber(event[key]).integerValue()
 				}
 			}

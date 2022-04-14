@@ -3,5 +3,6 @@ TODO
  * format dates in CSV so openoffice/excel understand it
  * make "abiNames": ["FlexUSDImplV2","sep20"] work and then
  	* change output filename <method>.csv to <abi_name>.<method>.csv
- * event order is by blockNumber only. There should be some addition in-block sequence number that needs to be used to not screw up the balance tracking and interest payment calculation
+ * event order is by blockNumber only. There should be some addition in-block sequence number that needs to be used to not screw up the balance tracking and interest payment calculation <- maybe transaction_index?
  * EXPONENTIAL_AT isn't working. Some output are 7.6E-17, for example
+ * instead of "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"  use contractManager.getContractByName("flexUSD")
