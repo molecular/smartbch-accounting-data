@@ -1,5 +1,12 @@
 [
   {
+    "address": "0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154",
+    "abiNames": ["uniswapV2Pair"],
+    "type": "uniswapV2Pair",
+    "name": "MistLPTEST",
+    "logo": false
+  },
+  {
     "address": "0xE11829A7D5d8806BB36E118461a1012588faFD89",
     "abiNames": ["sep20"],
     "type": "sep20",

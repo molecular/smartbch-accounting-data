@@ -43,10 +43,7 @@ api.getBlockHeader().then(async (latest) => {
 	const max_count = "0x0"; // 0x0 == no limit
 
 	do_2_ethGetLogs(start_block, end_block, max_count);
-
-	console.log(await contract_manager.getContractByAddress("0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"));
-	//console.log(await contract_manager.getContractByAddress("0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154")); // unkown
-	console.log(await contract_manager.getContractByAddress("0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"));
+	//contract_manager.loadContracts(['0x24f011f12ea45afadb1d4245ba15dcab38b43d13']);
 
 
 });
@@ -66,11 +63,19 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 		return api.getLogs(topics, start_block, end_block, max_count)
 	}))
 	.then(flattenArrays)
+	//.then(logToConsole)
+	.then((logs) => {
+		return contract_manager.loadContracts(logs.map(log => log.address))
+		.then(() => { return logs; });
+	})
+//	.then(logToConsole)
+	// .then((events) => {
+	// 	return events.filter((event) => event.address == '0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154');
+	// })
 	.then(decodeLogsToEvents)
 	.then(extendEventsWithBlockInfo)
-	.then(logToConsole)
-	// .then(appendSyntheticEvents)
-	// .then((events: any[]) => convertValues(contract, events))
+	// // .then(appendSyntheticEvents)
+	.then(convertValues)
 	.then(sortChronologically)
 	.then(groupEventsByName)
 	.then(dumpEventsToCSV);
@@ -92,48 +97,49 @@ function logResults(result: any) {
 }
 
 function decodeLogsToEvents(logs: Log[]) {
-	//let rc: any[] = [];
-	// TODO: use cache (by address) for contract, contract_abi and/or event_decoder
 	return Promise.all(logs.map(async (log) => {
-		return contract_manager.getContractByAddress(log.address)
-		.then((contract) => {
-			console.log("contract: ", contract)
-			if (contract) {
-				let contract_abi = contract_abis.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))[0]
-				let event_decoder = new EventDecoder(contract_abi.abi);
-				let dlog = event_decoder.decodeLog(log);
-				if (!dlog || dlog.name === undefined) {
-					console.log("unable to decode log:", log);
-					if (dlog) 
-						console.log("unable to decode dlog:", dlog);
-				}
-				//assert.equal(log.address, contract.address);
-				if (dlog) {
-					let parameters = dlog.events.reduce((o, e: IDecodedValue) => {
-						o[`${e.name}(${e.type})`] = e.value;
-						return o;
-					}, {});
-					return {
-						blockNumber: util.parseHex(""+log.blockNumber),
-						abi: contract_abi.type,
-						event_name: dlog.name,
-						contract_address: log.address,
-						contract_name: contract["name"],
-						contract_symbol: contract["symbol"],
-						...parameters
-					}
-				}
-			} else { // no contract
+		let contract = contract_manager.getContractByAddress(log.address)
+		if (contract) {
+			let contract_abi = contract_abis.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))[0]
+			let event_decoder = new EventDecoder(contract_abi.abi);
+			let dlog = event_decoder.decodeLog(log);
+			if (dlog) {
+				let parameters = dlog.events.reduce((o, e: IDecodedValue) => {
+					o[`${e.name}(${e.type})`] = e.value;
+					return o;
+				}, {});
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
-					abi: "<unknown>",
+					abi: contract_abi.type,
+					event_name: dlog.name,
+					contract_address: log.address,
+					contract_name: contract["name"],
+					contract_symbol: contract["symbol"],
+					...parameters
+				}
+			} else { // decode fail
+				console.log(`decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Can't decode events`);
+				return {
+					blockNumber: util.parseHex(""+log.blockNumber),
+					abi: "<unknwown>",
 					event_name: "<unknown>",
 					contract_address: log.address,
-					contract_name: "<unknown>",
-					contract_symbol: "",
+					contract_name: contract["name"],
+					contract_symbol: contract["symbol"],
 				}
+
 			}
-		});
+		} else { // no contract
+			console.log("no contract for log.address", log.address);
+			return {
+				blockNumber: util.parseHex(""+log.blockNumber),
+				abi: "<unknown>",
+				event_name: "<unknown>",
+				contract_address: log.address,
+				contract_name: "<unknown>",
+				contract_symbol: "",
+			}
+		}
 	}));
 }
 
@@ -151,7 +157,9 @@ function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 		},{});
 
 		// extend event with block info
-		return events.map((event) => {
+		return events
+		.filter((event) => event)
+		.map((event) => {
 			if (event && event.blockNumber) {
 				let block = blocks_by_number[event.blockNumber]
 				return {
@@ -248,12 +256,15 @@ function appendSyntheticEvents(contract, events: any[]) {
 	});
 }
 
-function convertValues(contract, events): Promise<any[]> {
-	events.forEach((event) => {
+async function convertValues(events): Promise<any[]> {
+	events.forEach(async (event) => {
+		console.log("event.address:", event.contract_address);
+		console.log("from event", event);
+		let contract = await contract_manager.getContractByAddress(event.contract_address);
 		Object.keys(event).forEach((key) => {
 			if (key.indexOf("(uint256)") > 0) {
 				if (event[key] !== undefined ) {
-					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals()"]}`)).toFixed(config.output.decimals)
+					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals"]}`)).toFixed(config.output.decimals)
 					event[key] = new BigNumber(event[key]).integerValue()
 				}
 			}
