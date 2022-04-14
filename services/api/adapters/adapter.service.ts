@@ -20,7 +20,7 @@ export abstract class NodeAdapter {
   abstract getAccountBalance(address: string): Promise<string>;
   abstract getCode(address: string): Promise<string>;
   abstract queryLogs(address: string, data: any[] | null, start: string, end: string, limit: string): Promise<Log[]>;
-  abstract getLogs(topics: (string | string[] | null)[], start: string, end: string, limit: string): Promise<Log[]>;
+  abstract getLogs(address: string|null, topics: (string | string[] | null)[], start: string, end: string, limit: string): Promise<Log[]>;
   abstract queryAddressLogs(address: string): Promise<Log[]> | undefined;
   abstract call(transactionConfig: TransactionConfig, returnType: string): Promise<any>;
   abstract callMultiple(items: {transactionConfig: TransactionConfig, returnType: string}[]): Promise<any>;

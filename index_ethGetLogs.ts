@@ -51,16 +51,15 @@ api.getBlockHeader().then(async (latest) => {
 function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// append my_addresses from config
 	let my_address_topics = config.my_addresses.map((address) => util.convertAddressToTopic(address));
-	let topic_sets = [
-		[Web3.utils.sha3("ChangeMultiplier(uint256)")],
-//		[util.convertAddressToTopic(config.my_addresses[0])],
-		[null, my_address_topics],
-		[null, null, my_address_topics],
-		[null, null, null, my_address_topics],
+	let sets = [
+		{ contract_address: "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72", topics: [Web3.utils.sha3("ChangeMultiplier(uint256)")] },
+		{ contract_address: null, topics: [null, my_address_topics] },
+		{ contract_address: null, topics: [null, null, my_address_topics] },
+		{ contract_address: null, topics: [null, null, null, my_address_topics] },
 	]
 
-	Promise.all(topic_sets.map((topics) => {
-		return api.getLogs(topics, start_block, end_block, max_count)
+	Promise.all(sets.map((set) => {
+		return api.getLogs(set.contract_address, set.topics, start_block, end_block, max_count)
 	}))
 	.then(flattenArrays)
 //	.then(logToConsole)

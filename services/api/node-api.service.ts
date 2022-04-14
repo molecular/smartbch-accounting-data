@@ -128,8 +128,8 @@ export class NodeApiService {
 		return await this.apiAdapter?.queryLogs(address, data, start, end, limit);
 	}
 
-	public async getLogs(topics: (string | string[] | null)[], start: string, end: string, limit: string) {
-		return await this.apiAdapter?.getLogs(topics, start, end, limit);
+	public async getLogs(address: string|null, topics: (string | string[] | null)[], start: string, end: string, limit: string) {
+		return await this.apiAdapter?.getLogs(address, topics, start, end, limit);
 	}
 
 	public async queryAddressLogs(address: string) {
