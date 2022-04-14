@@ -52,7 +52,7 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// append my_addresses from config
 	let my_address_topics = config.my_addresses.map((address) => util.convertAddressToTopic(address));
 	let topic_sets = [
-//		["0xd1ac89bfc464ce49c894c4e2379f1ca2b062aff1a640e929764ac1157fa13f0f"],
+		["0xd1ac89bfc464ce49c894c4e2379f1ca2b062aff1a640e929764ac1157fa13f0f"],
 //		[util.convertAddressToTopic(config.my_addresses[0])],
 		[null, my_address_topics],
 		[null, null, my_address_topics],
@@ -74,7 +74,7 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// })
 	.then(decodeLogsToEvents)
 	.then(extendEventsWithBlockInfo)
-	// // .then(appendSyntheticEvents)
+	.then(appendSyntheticEvents)
 	.then(convertValues)
 	.then(sortChronologically)
 	.then(groupEventsByName)
@@ -185,69 +185,85 @@ function sortChronologically(events: any[]) {
 }
 
 // create synthetic events from existing events like flexUSD interest payments from ChangeMultiplier events
-function appendSyntheticEvents(contract, events: any[]) {
+function appendSyntheticEvents(events: any[]) {
 
-	// setup balance tracking
-	let balance_by_address = config.my_addresses.reduce((o,a) => {
-		o[a] = new BigNumber(0.0);
-		return o;
-	}, {});
-	//console.log("balances", balance_by_address);
-
-	// iterate through events in chronological order tracking balance and generating <synthetic> events
-	let previousMultiplier = new BigNumber(`1E${contract["decimals()"]}`);
 	let created_events: any[] = [];
-	let relevant_events = 
-	events
-	.filter((event) => {
-		return event["contract_name"] == contract.name && ["ChangeMultiplier", "Transfer"].includes(event["event_name"])
-	})
-	.sort((a,b) => {
-		return a.blockTimestamp - b.blockTimestamp
-	})
-	.forEach((event) => {
-		//console.log(event);
-		if (event["event_name"] == "Transfer") {
-			config.my_addresses.forEach((address) => {
-				//console.log("address", address, "to", event["to(address)"], "value", event["value(uint256)"])
-				if (address.toLowerCase() == event["from(address)"].toLowerCase()) {
-					balance_by_address[address] = balance_by_address[address].integerValue().minus(new BigNumber(event["value(uint256)"]).integerValue());
-					event["<balance>(uint256)"] = balance_by_address[address]
-				}
-				if (address.toLowerCase() == event["to(address)"].toLowerCase()) {
-					balance_by_address[address] = balance_by_address[address].integerValue().plus(new BigNumber(event["value(uint256)"]).integerValue());
-					event["<balance>(uint256)"] = balance_by_address[address]
-				}
-			})
-		}
-		if (event["event_name"] == "ChangeMultiplier") {
-			let multiplier = new BigNumber(event["multiplier(uint256)"])
 
-			config.my_addresses.forEach((a) => {
-				let new_balance = balance_by_address[a].multipliedBy(multiplier).dividedBy(previousMultiplier).integerValue();
-				let delta = new_balance.minus(balance_by_address[a])
-				if (!delta.isEqualTo(0)) {
-					created_events.push({
-						blockTimestamp: event.blockTimestamp,
-						blockDate: event.blockDate,
-						blockNumber: event.blockNumber,
-						abi: '<synthetic, interest payment>',
-						event_name: 'Transfer',
-						contract_address: event.contract_address,
-						contract_name: event.contract_name,
-						contract_symbol: event.contract_symbol,
-						"from(address)": "",
-						"to(address)": a,
-						"value(uint256)": delta,
-						"<balance>(uint256)": new_balance
-					});
-					balance_by_address[a] = new_balance;
-				}
-			})
+	// for each contract
+	Object.keys(
+		events
+		.filter((event) => {
+			return "Transfer" == event["event_name"];
+		})
+		.reduce((o, e) => {
+			o[e.contract_address] = true
+			return o;
+		}, {})
+	)
+	.forEach((contract_address) => {
+		let contract = contract_manager.getContractByAddress(contract_address);
 
-			previousMultiplier = multiplier;
-		}
-	});
+		// setup balance tracking
+		let balance_by_address = config.my_addresses.reduce((o,a) => {
+			o[a] = new BigNumber(0.0);
+			return o;
+		}, {});
+		console.log("contract", contract.address, "balances", balance_by_address);
+
+		// iterate through events in chronological order tracking balance and generating <synthetic> events
+		let previousMultiplier = new BigNumber(`1E${contract["decimals"]}`);
+		let relevant_events = 
+		events
+		.filter((event) => {
+			return event["contract_name"] == contract.name && ["ChangeMultiplier", "Transfer"].includes(event["event_name"])
+		})
+		.sort((a,b) => {
+			return a.blockTimestamp - b.blockTimestamp
+		})
+		.forEach((event) => {
+			//console.log(event);
+			if (event["event_name"] == "Transfer") {
+				config.my_addresses.forEach((address) => {
+					//console.log("address", address, "to", event["to(address)"], "value", event["value(uint256)"])
+					if (address.toLowerCase() == event["from(address)"].toLowerCase()) {
+						balance_by_address[address] = balance_by_address[address].integerValue().minus(new BigNumber(event["value(uint256)"]).integerValue());
+						event["<balance>(uint256)"] = balance_by_address[address]
+					}
+					if (address.toLowerCase() == event["to(address)"].toLowerCase()) {
+						balance_by_address[address] = balance_by_address[address].integerValue().plus(new BigNumber(event["value(uint256)"]).integerValue());
+						event["<balance>(uint256)"] = balance_by_address[address]
+					}
+				})
+			}
+			if (event["event_name"] == "ChangeMultiplier") {
+				let multiplier = new BigNumber(event["multiplier(uint256)"])
+
+				config.my_addresses.forEach((a) => {
+					let new_balance = balance_by_address[a].multipliedBy(multiplier).dividedBy(previousMultiplier).integerValue();
+					let delta = new_balance.minus(balance_by_address[a])
+					if (!delta.isEqualTo(0)) {
+						created_events.push({
+							blockTimestamp: event.blockTimestamp,
+							blockDate: event.blockDate,
+							blockNumber: event.blockNumber,
+							abi: '<synthetic, interest payment>',
+							event_name: 'Transfer',
+							contract_address: event.contract_address,
+							contract_name: event.contract_name,
+							contract_symbol: event.contract_symbol,
+							"from(address)": "",
+							"to(address)": a,
+							"value(uint256)": delta,
+							"<balance>(uint256)": new_balance
+						});
+						balance_by_address[a] = new_balance;
+					}
+				})
+
+				previousMultiplier = multiplier;
+			}
+		});
+	}); 
 	// config.my_addresses.forEach((a) => {
 	// 	console.log(a, ": ", balance_by_address[a].dividedBy(1E18).toFixed(18));
 	// })
@@ -258,8 +274,6 @@ function appendSyntheticEvents(contract, events: any[]) {
 
 async function convertValues(events): Promise<any[]> {
 	events.forEach(async (event) => {
-		console.log("event.address:", event.contract_address);
-		console.log("from event", event);
 		let contract = await contract_manager.getContractByAddress(event.contract_address);
 		Object.keys(event).forEach((key) => {
 			if (key.indexOf("(uint256)") > 0) {

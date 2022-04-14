@@ -61,10 +61,12 @@ main task here is to configure your list of smartbch accounts
 
 ### Running
 
+Before running it's probably a good idea to remove any .csv file from previous runs to not end up with stale data.
+
 Theres many ways to compile/run a typescript project. One is:
 
 ```
-#> npx ts-node index.ts 
+#> rm -f *.csv; npx ts-node index.ts 
 ```
 
 ## Telegram group for Support, Feedback, Discussion
