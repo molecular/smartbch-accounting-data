@@ -52,7 +52,7 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// append my_addresses from config
 	let my_address_topics = config.my_addresses.map((address) => util.convertAddressToTopic(address));
 	let topic_sets = [
-		["0xd1ac89bfc464ce49c894c4e2379f1ca2b062aff1a640e929764ac1157fa13f0f"],
+		[Web3.utils.sha3("ChangeMultiplier(uint256)")],
 //		[util.convertAddressToTopic(config.my_addresses[0])],
 		[null, my_address_topics],
 		[null, null, my_address_topics],
@@ -63,12 +63,11 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 		return api.getLogs(topics, start_block, end_block, max_count)
 	}))
 	.then(flattenArrays)
-	//.then(logToConsole)
+//	.then(logToConsole)
 	.then((logs) => {
 		return contract_manager.loadContracts(logs.map(log => log.address))
 		.then(() => { return logs; });
 	})
-//	.then(logToConsole)
 	// .then((events) => {
 	// 	return events.filter((event) => event.address == '0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154');
 	// })
@@ -110,6 +109,8 @@ function decodeLogsToEvents(logs: Log[]) {
 				}, {});
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
+					transaction_hash: log.transactionHash,
+					transaction_index: log.transactionIndex,
 					abi: contract_abi.type,
 					event_name: dlog.name,
 					contract_address: log.address,
@@ -119,8 +120,11 @@ function decodeLogsToEvents(logs: Log[]) {
 				}
 			} else { // decode fail
 				console.log(`decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Can't decode events`);
+				console.log(log)
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
+					transaction_hash: log.transactionHash,
+					transaction_index: log.transactionIndex,
 					abi: "<unknwown>",
 					event_name: "<unknown>",
 					contract_address: log.address,
@@ -133,6 +137,8 @@ function decodeLogsToEvents(logs: Log[]) {
 			console.log("no contract for log.address", log.address);
 			return {
 				blockNumber: util.parseHex(""+log.blockNumber),
+				transaction_hash: log.transactionHash,
+				transaction_index: log.transactionIndex,
 				abi: "<unknown>",
 				event_name: "<unknown>",
 				contract_address: log.address,
@@ -246,6 +252,8 @@ function appendSyntheticEvents(events: any[]) {
 							blockTimestamp: event.blockTimestamp,
 							blockDate: event.blockDate,
 							blockNumber: event.blockNumber,
+							transaction_hash: event.transaction_hash,
+							transaction_index: event.transaction_index,
 							abi: '<synthetic, interest payment>',
 							event_name: 'Transfer',
 							contract_address: event.contract_address,
