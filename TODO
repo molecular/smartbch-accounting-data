@@ -1,8 +1,13 @@
 TODO
 
- * format dates in CSV so openoffice/excel understand it
- * make "abiNames": ["FlexUSDImplV2","sep20"] work and then
- 	* change output filename <method>.csv to <abi_name>.<method>.csv
- * event order is by blockNumber only. There should be some addition in-block sequence number that needs to be used to not screw up the balance tracking and interest payment calculation <- maybe transaction_index?
- * EXPONENTIAL_AT isn't working. Some output are 7.6E-17, for example
- * instead of "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"  use contractManager.getContractByName("flexUSD")
+	* format dates in CSV so openoffice/excel understand it
+	* make "abiNames": ["FlexUSDImplV2","sep20"] work and then
+		* change output filename <method>.csv to <abi_name>.<method>.csv
+	* event order is by blockNumber only. There should be some addition in-block sequence number that needs to be used to not screw up the balance tracking and interest payment calculation <- maybe transaction_index?
+	* EXPONENTIAL_AT isn't working. Some output are 7.6E-17, for example
+	* instead of "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72"  use contractManager.getContractByName("flexUSD")
+	* I'm pretty sure the balance tracker will fail with transfers where to and from are both in config.my_addresses
+		* maybe separate the trackBalances from generateSyntheticEvents as a start, trackBalance could be useful for other things
+	* type events by creating interface Event?
+  * maybe change "from(address)" => "from:address" in column naming for consistency?
+  * decide wether to use own SmartBCHApi api or the stuff copied over from smartscan

@@ -2,6 +2,9 @@ import { config } from "./config";
 import contract_abis from "./assets/config/contract-abi.json";
 
 import Web3 from "web3";
+import { TransactionConfig } from "web3-core";
+// import { BlockNumber, Log, TransactionConfig, TransactionReceipt } from 'web3-core';
+// import { Block, Transaction } from 'web3-eth';
 import { NodeApiService } from './services/api/node-api.service';
 
 import { Block, Transaction } from 'web3-eth';
@@ -10,15 +13,18 @@ import { Log, BlockNumber } from 'web3-core';
 import { UtilHelperService } from './services/helpers/util-helper.service'
 import { EventDecoder, IDecodedValue } from './services/helpers/event-decoder';
 
-import { createWriteStream } from 'fs';
+import { createWriteStream, createReadStream } from 'fs';
 import { stringify } from 'csv-stringify';
+import { parse } from 'csv-parse';
 import { BigNumber } from 'bignumber.js';
 
 import { Contract, ContractManager } from './contractmanager'
+import { SmartBCHApi } from './smartbch_api'
 
 const util = new UtilHelperService();
 const api = new NodeApiService(config.api);
 const contract_manager = new ContractManager(api);
+const sbch = new SmartBCHApi(config.api.apiEndpoint);
 
 // configure BigNumber classes (here and in util module)
 const bignumberConfig: BigNumber.Config = {
@@ -29,24 +35,35 @@ const bignumberConfig: BigNumber.Config = {
 BigNumber.config(bignumberConfig);
 util.bignumberConfig(bignumberConfig); // TODO: not sure this works
 
+
 api.getBlockHeader().then(async (latest) => {
 	console.log(`latest block Number: ${latest}, ${"0x" + (latest - 10).toString(16)}`)
 	const blocks_per_second = 5;
 	//const blocks = 30*24*60*60 / blocks_per_second;
 
 	const start_block = 
-		"0x1";
-		//util.toHex(latest-blocks);
+		1;
+		//latest-blocks;
 
-	const end_block = util.toHex(latest+1);
+	const end_block = 
+		latest+1;
+		//1090000;
 
-	const max_count = "0x0"; // 0x0 == no limit
+	const max_count = 0; // 0: default limit
 
+	//do_1_transactions(start_block, end_block, max_count)
 	do_2_ethGetLogs(start_block, end_block, max_count);
-	//contract_manager.loadContracts(['0x24f011f12ea45afadb1d4245ba15dcab38b43d13']);
-
 
 });
+
+const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x => x + start);
+
+function do_1_transactions(start_block, end_block, max_count) {
+	Promise.all(config.my_addresses.map((address) => {
+		return sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block), util.toHex(max_count))
+	}))
+	.then(logResults)
+}
 
 function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// append my_addresses from config
@@ -59,7 +76,7 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	]
 
 	Promise.all(sets.map((set) => {
-		return api.getLogs(set.contract_address, set.topics, start_block, end_block, max_count)
+		return api.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block), max_count)
 	}))
 	.then(flattenArrays)
 //	.then(logToConsole)
@@ -76,7 +93,7 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	.then(convertValues)
 	.then(sortChronologically)
 	.then(groupEventsByName)
-	.then(dumpEventsToCSV);
+	.then(writeCSVs);
 
 }
 
@@ -119,7 +136,7 @@ function decodeLogsToEvents(logs: Log[]) {
 				}
 			} else { // decode fail
 				console.log(`decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Can't decode events`);
-				console.log(log)
+				//console.log(log)
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
 					transaction_hash: log.transactionHash,
@@ -230,11 +247,11 @@ function appendSyntheticEvents(events: any[]) {
 			if (event["event_name"] == "Transfer") {
 				config.my_addresses.forEach((address) => {
 					//console.log("address", address, "to", event["to(address)"], "value", event["value(uint256)"])
-					if (address.toLowerCase() == event["from(address)"].toLowerCase()) {
+					if (event["from(address)"] && address.toLowerCase() == event["from(address)"].toLowerCase()) {
 						balance_by_address[address] = balance_by_address[address].integerValue().minus(new BigNumber(event["value(uint256)"]).integerValue());
 						event["<balance>(uint256)"] = balance_by_address[address]
 					}
-					if (address.toLowerCase() == event["to(address)"].toLowerCase()) {
+					if (event["to(address)"] && address.toLowerCase() == event["to(address)"].toLowerCase()) {
 						balance_by_address[address] = balance_by_address[address].integerValue().plus(new BigNumber(event["value(uint256)"]).integerValue());
 						event["<balance>(uint256)"] = balance_by_address[address]
 					}
@@ -310,7 +327,7 @@ function groupEventsByName(events: any[]): Promise<any> {
 	return events_by_name;
 }
 
-function dumpEventsToCSV(events_by_name) {
+function writeCSVs(events_by_name) {
 
 	// dump events of each event name to "<event_name>.csv"
 	Object.keys(events_by_name).forEach((event_name) => {

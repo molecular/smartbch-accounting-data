@@ -17,6 +17,7 @@
     "async-mutex": "^0.3.2",
     "axios": "^0.26.1",
     "bignumber.js": "^9.0.2",
+    "csv-parse": "^5.0.4",
     "csv-stringify": "^6.0.5",
     "lodash": "^4.17.21",
     "npx": "^10.2.2",

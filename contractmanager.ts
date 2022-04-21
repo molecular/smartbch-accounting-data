@@ -52,6 +52,7 @@ export class ContractManager {
 			{name: "name", return_type: 'string'},
 			{name: "decimals", return_type: 'uint8'},
 			{name: "symbol", return_type: 'string'},
+			{name: "totalSupply", return_type: 'uint256'},
 		];
 		console.log("loading contracts for addresses: ", addresses);
 		let call_promises: Promise<void | Contract>[] = []

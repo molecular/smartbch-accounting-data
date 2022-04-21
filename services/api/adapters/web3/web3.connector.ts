@@ -289,7 +289,7 @@ export class Web3Connector {
 
   getLogs(address: string|null, topics: (string | null)[], start: string, end: string, limit: string) {
     if(!this.web3) return Promise.reject();
-    return this.web3.sbch.getLogs({address: address, fromBlock: start, toBlock: end, topics: topics});
+    return this.web3.sbch.getLogs({address: address, fromBlock: start, toBlock: end, topics: topics, limit: limit});
   }
 
   async queryAddressLogs(address: string, start?: string, end?: string) {
