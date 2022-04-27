@@ -2,13 +2,11 @@ import { config } from "./config";
 import contract_abis from "./assets/config/contract-abi.json";
 
 import Web3 from "web3";
-import { TransactionConfig } from "web3-core";
 // import { BlockNumber, Log, TransactionConfig, TransactionReceipt } from 'web3-core';
 // import { Block, Transaction } from 'web3-eth';
-import { NodeApiService } from './services/api/node-api.service';
 
-import { Block, Transaction } from 'web3-eth';
-import { Log, BlockNumber } from 'web3-core';
+//import { Transaction } from 'web3-eth';
+import { Log, BlockNumber, TransactionConfig } from 'web3-core';
 
 import { UtilHelperService } from './services/helpers/util-helper.service'
 import { EventDecoder, IDecodedValue } from './services/helpers/event-decoder';
@@ -22,9 +20,8 @@ import { Contract, ContractManager } from './contractmanager'
 import { SmartBCHApi } from './smartbch_api'
 
 const util = new UtilHelperService();
-const api = new NodeApiService(config.api);
-const contract_manager = new ContractManager(api);
 const sbch = new SmartBCHApi(config.api.apiEndpoint);
+const contract_manager = new ContractManager(sbch);
 
 // configure BigNumber classes (here and in util module)
 const bignumberConfig: BigNumber.Config = {
@@ -36,17 +33,19 @@ BigNumber.config(bignumberConfig);
 util.bignumberConfig(bignumberConfig); // TODO: not sure this works
 
 
-api.getBlockHeader().then(async (latest) => {
-	console.log(`latest block Number: ${latest}, ${"0x" + (latest - 10).toString(16)}`)
+sbch.blockNumber().then(async (latest: string) => {
+
+	let height = util.parseHex(latest)
+	console.log(`latest block Number: ${latest}, type: ${typeof latest}`)
 	const blocks_per_second = 5;
 	//const blocks = 30*24*60*60 / blocks_per_second;
 
 	const start_block = 
 		1;
-		//latest-blocks;
+		//height-blocks;
 
 	const end_block = 
-		latest+1;
+		height+1;
 		//1090000;
 
 	const max_count = 0; // 0: default limit
@@ -60,7 +59,7 @@ const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x =>
 
 function do_1_transactions(start_block, end_block, max_count) {
 	Promise.all(config.my_addresses.map((address) => {
-		return sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block), util.toHex(max_count))
+		return sbch.queryTxByAddr(address, start_block, util.toHex(end_block), util.toHex(max_count))
 	}))
 	.then(logResults)
 }
@@ -76,7 +75,7 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	]
 
 	Promise.all(sets.map((set) => {
-		return api.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block), max_count)
+		return sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
 	}))
 	.then(flattenArrays)
 //	.then(logToConsole)
@@ -167,14 +166,14 @@ function decodeLogsToEvents(logs: Log[]) {
 
 // look up blocks to set blockTimestamp, blockDate on each transfer
 function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {		
-	let blockNumbers: BlockNumber[] = events.map((t) => { 
-		if (t) return t.blockNumber; 
-		return 0
+	let blockNumbers: string[] = events.map((t) => { 
+		if (t) return util.toHex(t.blockNumber); 
+		return '0x0'
 	});
-	return api.getBlocks(blockNumbers)
-	.then((blocks: Block[]) => {
+	return sbch.getBlocksByNumbers(blockNumbers)
+	.then((blocks: any[]) => {
 		let blocks_by_number = blocks.reduce((o, block) => {
-			o[block.number] = block;
+			o[util.parseHex(block.number)] = block;
 			return o;
 		},{});
 

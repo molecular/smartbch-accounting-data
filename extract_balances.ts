@@ -3,7 +3,7 @@ import contract_abis from "./assets/config/contract-abi.json";
 
 import Web3 from "web3";
 import { TransactionConfig } from "web3-core";
-import { NodeApiService } from './services/api/node-api.service';
+//import { NodeApiService } from './services/api/node-api.service';
 
 import { Block, Transaction } from 'web3-eth';
 import { Log, BlockNumber } from 'web3-core';
@@ -17,10 +17,13 @@ import { parse } from 'csv-parse';
 import { BigNumber } from 'bignumber.js';
 
 import { Contract, ContractManager } from './contractmanager'
+import { SmartBCHApi } from './smartbch_api'
+
+import { _ } from 'lodash';
 
 const util = new UtilHelperService();
-const api = new NodeApiService(config.api);
-const contract_manager = new ContractManager(api);
+const sbch = new SmartBCHApi(config.api.apiEndpoint);
+const contract_manager = new ContractManager(sbch);
 
 // configure BigNumber classes (here and in util module)
 const bignumberConfig: BigNumber.Config = {
@@ -32,18 +35,20 @@ BigNumber.config(bignumberConfig);
 util.bignumberConfig(bignumberConfig); // TODO: not sure this works
 
 
-api.getBlockHeader().then(async (latest) => {
-	console.log(`latest block Number: ${latest}, ${"0x" + (latest - 10).toString(16)}`)
+sbch.blockNumber().then(async (latest: string) => {
+
+	let height = util.parseHex(latest)
+	console.log(`latest block Number: ${latest}`)
 	const blocks_per_second = 5;
 	//const blocks = 30*24*60*60 / blocks_per_second;
 
 	const start_block = 
 		// 1;;
-		990000;
-		//latest-blocks;
+		1;
+		//height-blocks;
 
 	const end_block = 
-		latest+1;
+		height+1;
 		//1090000;
 
 	const max_count = 0; // 0: default limit
@@ -51,16 +56,16 @@ api.getBlockHeader().then(async (latest) => {
 	//do_2_ethGetLogs(start_block, end_block, max_count);
 
 	//let contract_address = "0x7eBeAdb95724a006aFaF2F1f051B13F4eBEBf711" // CashKitten ;
-	//let contract_address = "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72" // flexUSD ;
-	let contract_address = "0x7642Df81b5BEAeEb331cc5A104bd13Ba68c34B91" // LCY
+	let contract_address = "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72" // flexUSD ;
+	//let contract_address = "0x7642Df81b5BEAeEb331cc5A104bd13Ba68c34B91" // LCY
 	//let contract_address = "0x445B3712A09f8102Dd0c1ffb6B3b0dE4D3B643b7" // WRS
 
 	await contract_manager.loadContracts([contract_address]);
 	let contract = contract_manager.getContractByAddress(contract_address);
 
-	let accounts_filename = "out/accounts." + contract.name + ".CSV";
-	//extract_accounts(accounts_filename, contract, start_block, end_block, max_count);
-	get_balances(accounts_filename, contract);
+	let accounts_filename = "out/accounts." + contract.symbol + ".csv";
+	await extract_accounts(accounts_filename, contract, start_block, end_block, max_count);
+	//get_balances(accounts_filename, contract);
 
 });
 
@@ -98,22 +103,22 @@ async function extract_accounts(accounts_filename, contract, start_block, end_bl
 			// console.log(util.toHex(frame))
 			// console.log(util.toHex(last_block))
 
-			return api.getLogs(
+			return sbch.getLogs(
 				set.contract_address, 
 				set.topics, 
 				util.toHex(frame), 
-				util.toHex(last_block), 
-				max_count
+				util.toHex(last_block)
 			)
 		}))
-		.then(flattenArrays)
+		.then(_.flatten)
+		.catch(logToConsole)
 		collector = collector.concat(collected)
 		console.log(`loop #${i}: blocks ${frame} - ${last_block}: found ${collected.length} items`);
 	}
 	console.log("found", collector.length, "items in aggregate");
 
 	Promise.resolve(collector)
-	.then(flattenArrays)
+	.then(_.flatten)
 	.then((logs) => { // extracts account from log topics
 		console.log("extracting accounts directly from logs")
 		return Object.keys(
@@ -143,17 +148,15 @@ async function get_balances(accounts_filename, contract) {
 		.then((accounts: string[]) => { 
 			//accounts = accounts.slice(0,100)
 			console.log("number of accounts", accounts.length)
-			return api.callMultiple( // call contract.balanceOf(account) for each account
+			// call contract.balanceOf(account) for each account
+			return Promise.all(
 				accounts.map((account) => {
-					let keccak = Web3.utils.sha3("balanceOf(address)")
-					if (keccak == null) keccak = ""
-					return {
-						transactionConfig: {
-							to: contract.address,
-							data: keccak.substring(0,10) + util.convertAddressToTopic(account).substring(2)
-						},
-						returnType: 'uint256'
-					};
+					return sbch.call(
+						null,
+						contract.address,
+						Web3.utils.sha3("balanceOf(address)")?.substring(0,10) + util.convertAddressToTopic(account).substring(2)
+					)
+					.catch(logToConsole)
 				})
 			).then((balances) => { // assemble an object suitable for output
 				let result: any[] = []
@@ -173,6 +176,7 @@ async function get_balances(accounts_filename, contract) {
 			return result.sort((a,b) => b["balance(uint256)"].comparedTo(a["balance(uint256)"]));
 		})
 		.then((result) => {
+			console.log("resutl", result)
 			let balances_filename = accounts_filename.replace("accounts", "accounts_with_balances");
 			stringify(result, { 
 				header: true,
@@ -202,10 +206,6 @@ async function get_balances(accounts_filename, contract) {
 function logToConsole(result) {
 	console.log(result);
 	return result;
-}
-
-function flattenArrays(arrays) {
-	return arrays.reduce((o, i) => { return o.concat(i); }, [])
 }
 
 function logResults(result: any) {

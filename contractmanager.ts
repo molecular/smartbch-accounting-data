@@ -2,7 +2,7 @@ import json_contracts from "./assets/config/contract.json";
 import json_contract_abis from "./assets/config/contract-abi.json";
 
 import Web3 from "web3";
-import { NodeApiService } from './services/api/node-api.service';
+import { SmartBCHApi } from './smartbch_api'
 
 export interface Contract {
 	address: string;
@@ -14,15 +14,15 @@ export interface Contract {
 }
 
 export class ContractManager {
-	api: NodeApiService;
+	sbch: SmartBCHApi;
 
 	contracts: Contract[] = [];
 	contract_abis = {};
 
 	contracts_by_address = {};
 
-	constructor(api: NodeApiService) {
-		this.api = api;
+	constructor(sbch: SmartBCHApi) {
+		this.sbch = sbch;
 		// import contracts and contract_abis from json files
 		this.contracts = json_contracts;
 		//this.contract_abis = json_contract_abis;
@@ -65,15 +65,10 @@ export class ContractManager {
 				}
 			}
 			methods.forEach((method) => {
-				let call_string = method.name + "()";
 				call_promises.push(
-					this.api.call(
-						{
-							to: contract.address,
-							data: "" + Web3.utils.sha3(call_string)
-						}, method.return_type
-					)
+					this.sbch.call(null, contract.address, Web3.utils.sha3(method.name + "()"), method.return_type)
 					.then((result) => {
+						//console.log("call method", method.name, "result:", result);
 						contract[method.name] = result;
 						return contract;
 					})

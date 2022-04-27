@@ -1,9 +1,13 @@
 import axios from "axios";
-import { Hex } from 'web3-utils';
+import Web3 from "web3";
 import { Log } from 'web3-core';
+import { Block, Transaction } from 'web3-eth';
 
-// import { UtilHelperService } from './services/helpers/util-helper.service'
-// const util = new UtilHelperService();
+import { AbiCoder } from "web3-eth-abi";
+const abicoder: AbiCoder = require('web3-eth-abi');
+
+import { UtilHelperService } from './services/helpers/util-helper.service'
+const util = new UtilHelperService();
 
 export class SmartBCHApi {
 	rpc_endpoint: string;
@@ -14,7 +18,7 @@ export class SmartBCHApi {
 
 	// making requests
 
-	rpc_request(method:string, params:Array<any> = [], log:boolean = true) {
+	rpc_request(method:string, params:Array<any> = [], log:boolean = false) {
 		let pars = {
 			"jsonrpc": "2.0", 
 			"method": method, 
@@ -39,18 +43,41 @@ export class SmartBCHApi {
 		return this.rpc_request(method, [address, block]);
 	}
 
-	// public-facing function
+	// public-facing functions exposing the api (incomplete)
 
-	public queryTxByAddr(from: string, start: Hex | 'latest', end: Hex | 'latest', limit: Hex): Promise<any> {
-		return this.rpc_request("sbch_queryTxByAddr", [from, start, end, limit]);
+	public blockNumber(): Promise<string> {
+		return this.rpc_request("eth_blockNumber");
 	}
 
-  public eth_getLogs(address: string|null, topics: (string | string[] | null)[], start: number, end: number): Promise<Log[]> {
+	public getBlockByNumber(blockNumber: string): Promise<any> {
+		return this.rpc_request("eth_getBlockByNumber", [blockNumber, true]);
+	}
+
+	public getBlocksByNumbers(blockNumbers: string[]): Promise<any[]> {
+		return Promise.all(blockNumbers.map((blockNumber) => this.getBlockByNumber(blockNumber)));
+	}
+
+  public getLogs(address: string|null, topics: (string | string[] | null)[], start: string | 'latest', end: string | 'latest'): Promise<Log[]> {
 		return this.rpc_request("eth_getLogs", [{
 			address: address,
 			topics: topics,
 			fromBlock: start,
 			toBlock: end,
-		}]);
+		}], false);
+	}
+
+	public queryTxByAddr(from: string, start: string | 'latest', end: string | 'latest', limit: string): Promise<Transaction[]> {
+		return this.rpc_request("sbch_queryTxByAddr", [from, start, end, limit]);
+	}
+
+	public call(from: string | null, to: string | null, data: string | null, returnType?: string ): Promise<any> {
+		returnType = returnType?returnType:'uint256'
+		return this.rpc_request("eth_call", [
+			{	to, data }, 
+			'latest'
+		], false)
+		.then((result) => {
+			return abicoder.decodeParameter(returnType, result);			
+		});
 	}
 }

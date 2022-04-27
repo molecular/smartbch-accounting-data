@@ -28,12 +28,12 @@ export class UtilHelperService {
     return ( (block.gasUsed / block.gasLimit) * 100).toFixed(5)
   }
 
-  public parseHex(data: string) {
+  public parseHex(data: string): number {
     if (data.startsWith('0x')) return parseInt(data, 16);
     else return parseInt(data);
   }
 
-  public toHex(number: number) {
+  public toHex(number: number): string {
     return "0x" + number.toString(16);
   }
 
