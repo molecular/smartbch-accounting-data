@@ -32,6 +32,9 @@ const bignumberConfig: BigNumber.Config = {
 BigNumber.config(bignumberConfig);
 util.bignumberConfig(bignumberConfig); // TODO: not sure this works
 
+const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x => x + start);
+
+// main
 
 sbch.blockNumber().then(async (latest: string) => {
 
@@ -58,12 +61,20 @@ sbch.blockNumber().then(async (latest: string) => {
 
 });
 
-function do_masterchef_getPoolInfo(masterchef_address: string) {
-	for (let i=0; i<50; i++) {
+// main funcs
+
+async function do_masterchef_getPoolInfo(masterchef_address: string) {
+	// pool_length := masterchef.poolLength()
+	let pool_length = await sbch.call(
+		null, masterchef_address, "poolLength()", [], 'uint256'
+	)
+
+	// write results from each masterchef.poolInfo() to csv
+	Promise.all(range(0, pool_length-1).map((i) => {
 		let parameters: TypedParameter[] = [
 			{ type: 'uint256', value: util.toHex(i) }
 		];
-		sbch.call(
+		return sbch.call(
 			null, 
 			masterchef_address, 
 			"poolInfo(uint256)", 
@@ -76,15 +87,19 @@ function do_masterchef_getPoolInfo(masterchef_address: string) {
 			]
 		)
 		.then((result) => {
-			console.log("poolinfo result:", result);
+			return {
+				masterchef_address: masterchef_address,
+				pid: i,
+				...result
+			}
 		})
 		.catch((error) => {
 			console.log("poolinfo error:", error);
 		})
-	}
+	}))
+	.then(logToConsole)
+	.then(writeCSV("out/basedata/masterchef_pools.csv"))
 }
-
-const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x => x + start);
 
 function do_1_transactions(start_block, end_block, max_count) {
 	Promise.all(config.my_addresses.map((address) => {
@@ -165,7 +180,7 @@ function decodeLogsToEvents(logs: Log[]) {
 					...parameters
 				}
 			} else { // decode fail
-				console.log(`decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Can't decode events`);
+				console.log(`decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Cannot decode events`);
 				//console.log(log)
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
@@ -355,6 +370,18 @@ function groupEventsByName(events: any[]): Promise<any> {
 		return o;
 	}, {});
 	return events_by_name;
+}
+
+function writeCSV(filename: string) {
+	return (results) => {
+		stringify(results, { 
+			header: true,
+			columns: Object.keys(results[0])
+		})
+		.pipe(createWriteStream(filename));
+		console.log(`wrote ${results.length} items to ${filename}`);
+		return results;
+	}; 
 }
 
 function writeCSVs(events_by_name) {
