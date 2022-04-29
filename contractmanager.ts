@@ -66,14 +66,20 @@ export class ContractManager {
 			}
 			methods.forEach((method) => {
 				call_promises.push(
-					this.sbch.call(null, contract.address, Web3.utils.sha3(method.name + "()"), method.return_type)
+					this.sbch.call(
+						null, 
+						contract.address, 
+						method.name + "()", 
+						undefined,
+						method.return_type
+					)
 					.then((result) => {
 						//console.log("call method", method.name, "result:", result);
 						contract[method.name] = result;
 						return contract;
 					})
 					.catch((error) => {
-						contract[method.name] = "" + error;
+						//contract[method.name] = "" + error;
 						return contract;
 					})
 				);

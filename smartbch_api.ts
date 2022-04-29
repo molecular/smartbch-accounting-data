@@ -9,6 +9,16 @@ const abicoder: AbiCoder = require('web3-eth-abi');
 import { UtilHelperService } from './services/helpers/util-helper.service'
 const util = new UtilHelperService();
 
+export interface TypedParameter {
+	type: string;
+	value: any;
+}
+
+export interface NamedReturnType {
+	name?: string;
+	type: string;
+}
+
 export class SmartBCHApi {
 	rpc_endpoint: string;
 
@@ -70,14 +80,50 @@ export class SmartBCHApi {
 		return this.rpc_request("sbch_queryTxByAddr", [from, start, end, limit]);
 	}
 
-	public call(from: string | null, to: string | null, data: string | null, returnType?: string ): Promise<any> {
+/*	public call(from: string | null, to: string | null, data: string | null, returnType?: string | string[] ): Promise<any> {
 		returnType = returnType?returnType:'uint256'
+		return this.rpc_request("eth_call", [
+			{	to, data }, 
+			'latest'
+		], true)
+		.then((result) => {
+			if (Array.isArray(returnType)) {
+				console.log("decoding", result, "using returnTypes", returnType);
+				return abicoder.decodeParameters(returnType, result);
+			} else {
+				return abicoder.decodeParameter(returnType, result);
+			}
+		});
+	}
+*/
+	public call(from: string | null, to: string | null, method_signature: string, parameters: TypedParameter[] = [], returnType?: string | NamedReturnType[] ): Promise<any> {
+		returnType = returnType??'uint256'
+
+		let data = parameters.reduce((o, p) => {
+			//console.log("  para of type", p.type, "value", p.value, "encoded to", abicoder.encodeParameter(p.type, p.value).substring(2))
+			return o + abicoder.encodeParameter(p.type, p.value).substring(2);
+		}, Web3.utils.sha3(method_signature)?.substring(0,10))
+
 		return this.rpc_request("eth_call", [
 			{	to, data }, 
 			'latest'
 		], false)
 		.then((result) => {
-			return abicoder.decodeParameter(returnType, result);			
+			if (Array.isArray(returnType)) {
+
+				// TODO choose option 1: return values both indexed by position and returnType name
+				//return abicoder.decodeParameters(returnType, result);
+
+				// TODO choose option 2: return values only indexed by returnType name
+				let return_values = abicoder.decodeParameters(returnType, result);
+				return returnType.reduce((o, rt) => {
+					let name = rt.name??'<anon>';
+					o[name] = return_values[name];
+					return o;
+				}, {});
+			} else {
+				return abicoder.decodeParameter(returnType, result);
+			}
 		});
 	}
 }

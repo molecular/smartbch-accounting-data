@@ -17,7 +17,7 @@ import { parse } from 'csv-parse';
 import { BigNumber } from 'bignumber.js';
 
 import { Contract, ContractManager } from './contractmanager'
-import { SmartBCHApi } from './smartbch_api'
+import { SmartBCHApi, TypedParameter, NamedReturnType } from './smartbch_api'
 
 const util = new UtilHelperService();
 const sbch = new SmartBCHApi(config.api.apiEndpoint);
@@ -50,10 +50,39 @@ sbch.blockNumber().then(async (latest: string) => {
 
 	const max_count = 0; // 0: default limit
 
+	const masterchef = "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4";
+
 	//do_1_transactions(start_block, end_block, max_count)
-	do_2_ethGetLogs(start_block, end_block, max_count);
+	//do_2_ethGetLogs(start_block, end_block, max_count);
+	do_masterchef_getPoolInfo(masterchef);
 
 });
+
+function do_masterchef_getPoolInfo(masterchef_address: string) {
+	for (let i=0; i<50; i++) {
+		let parameters: TypedParameter[] = [
+			{ type: 'uint256', value: util.toHex(i) }
+		];
+		sbch.call(
+			null, 
+			masterchef_address, 
+			"poolInfo(uint256)", 
+			parameters, 
+			[
+				{ name: 'lpToken', type: 'address' },
+				{ name: 'allocPoint', type: 'uint256' },
+				{ name: 'lastRewardBlock', type: 'uint256' },
+				{ name: 'accSushiPerShare', type: 'uint256' },
+			]
+		)
+		.then((result) => {
+			console.log("poolinfo result:", result);
+		})
+		.catch((error) => {
+			console.log("poolinfo error:", error);
+		})
+	}
+}
 
 const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x => x + start);
 
@@ -72,6 +101,8 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 		{ contract_address: null, topics: [null, my_address_topics] },
 		{ contract_address: null, topics: [null, null, my_address_topics] },
 		{ contract_address: null, topics: [null, null, null, my_address_topics] },
+		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, my_address_topics] }, // mist masterchef
+		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, null, my_address_topics] },
 	]
 
 	Promise.all(sets.map((set) => {
