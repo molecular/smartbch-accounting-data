@@ -36,7 +36,8 @@ const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x =>
 
 // main
 
-sbch.blockNumber().then(async (latest: string) => {
+sbch.blockNumber()
+.then(async (latest: string) => {
 
 	let height = util.parseHex(latest)
 	console.log(`latest block Number: ${latest}, type: ${typeof latest}`)
@@ -57,11 +58,25 @@ sbch.blockNumber().then(async (latest: string) => {
 
 	//do_1_transactions(start_block, end_block, max_count)
 	//do_2_ethGetLogs(start_block, end_block, max_count);
-	do_masterchef_getPoolInfo(masterchef);
+	//do_masterchef_getPoolInfo(masterchef);
+	do_get_transactions(config.my_addresses, start_block, end_block)
 
+})
+.catch((error) => {
+	console.log(`error connecting to sbch node ${config.api.apiEndpoint}: ${error}`);
 });
 
 // main funcs
+
+async function do_get_transactions(addresses: string[], start_block, end_block) {
+	Promise.all(
+		addresses.map(address => sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block)))
+	)
+	.then(flattenArrays)
+//	.then(logToConsole)
+	.then(writeCSV("out/transactions.csv"))
+	.catch(logError)
+}
 
 async function do_masterchef_getPoolInfo(masterchef_address: string) {
 	// pool_length := masterchef.poolLength()
@@ -93,9 +108,7 @@ async function do_masterchef_getPoolInfo(masterchef_address: string) {
 				...result
 			}
 		})
-		.catch((error) => {
-			console.log("poolinfo error:", error);
-		})
+		.catch(logError)
 	}))
 	.then(logToConsole)
 	.then(writeCSV("out/basedata/masterchef_pools.csv"))
@@ -145,6 +158,11 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 function logToConsole(result) {
 	console.log(result);
 	return result;
+}
+
+function logError(error) {
+	console.log("ERROR: ", error);
+	return error;
 }
 
 function flattenArrays(arrays) {

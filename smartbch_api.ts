@@ -28,7 +28,7 @@ export class SmartBCHApi {
 
 	// making requests
 
-	rpc_request(method:string, params:Array<any> = [], log:boolean = false) {
+	rpc_request(method:string, params:Array<any> = [], log:boolean = false) : Promise<any> {
 		let pars = {
 			"jsonrpc": "2.0", 
 			"method": method, 
@@ -46,6 +46,7 @@ export class SmartBCHApi {
 			return res.data.result
 		}).catch( (err) => {
 			console.log("error:", err);
+			return err;
 		})
 	}
 
@@ -76,8 +77,13 @@ export class SmartBCHApi {
 		}], false);
 	}
 
-	public queryTxByAddr(from: string, start: string | 'latest', end: string | 'latest', limit: string): Promise<Transaction[]> {
-		return this.rpc_request("sbch_queryTxByAddr", [from, start, end, limit]);
+	public queryTxByAddr(address: string, start: string | 'latest', end: string | 'latest', limit: string = "0x0"): Promise<void | Transaction[]> {
+  	console.log("queryTxByAddr", address)
+		return this.rpc_request(
+			"sbch_queryTxByAddr", 
+			[address, start, end, limit],
+			false
+		);
 	}
 
 /*	public call(from: string | null, to: string | null, data: string | null, returnType?: string | string[] ): Promise<any> {

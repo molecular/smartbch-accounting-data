@@ -56,10 +56,10 @@ sbch.blockNumber().then(async (latest: string) => {
 	//do_2_ethGetLogs(start_block, end_block, max_count);
 
 	// Tokens
-	//let contract_address = "0x7eBeAdb95724a006aFaF2F1f051B13F4eBEBf711" // CashKitten ;
+	let contract_address = "0x7eBeAdb95724a006aFaF2F1f051B13F4eBEBf711" // CashKitten ;
 	//let contract_address = "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72" // flexUSD ;
 	//let contract_address = "0x7642Df81b5BEAeEb331cc5A104bd13Ba68c34B91" // LCY
-	let contract_address = "0x445B3712A09f8102Dd0c1ffb6B3b0dE4D3B643b7" // WRS
+	//let contract_address = "0x445B3712A09f8102Dd0c1ffb6B3b0dE4D3B643b7" // WRS
 	
 	// LPs 
 	// let contract_address = "0x24f011f12ea45afadb1d4245ba15dcab38b43d13" // MISTswap LP WBCH-flexUSD
@@ -70,8 +70,8 @@ sbch.blockNumber().then(async (latest: string) => {
 	let contract = contract_manager.getContractByAddress(contract_address);
 
 	let accounts_filename = "out/accounts." + contract.symbol + ".csv";
-	//await extract_accounts(accounts_filename, contract, start_block, end_block, max_count);
-	get_balances(accounts_filename, contract);
+	await extract_accounts(accounts_filename, contract, start_block, end_block, max_count);
+	//get_balances(accounts_filename, contract);
 
 });
 
