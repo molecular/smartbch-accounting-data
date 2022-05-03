@@ -6,6 +6,7 @@ export const config = {
 		"apiVersion": "v1",
 		"network": "Mainnet",
 
+		//"apiEndpoint": "http://nil.criptolayer.net:8545"
 		"apiEndpoint": "https://smartbch.fountainhead.cash/mainnet:8545"
 		// "apiEndpoint": "https://smartbch.fountainhead.cash/mainnet"
 		// "apiEndpoint": "https://global.uat.cash"
@@ -15,8 +16,8 @@ export const config = {
 
 	// list the smartbch account adresses you want to export data for
 	"my_addresses": [ 
-		"0x9f20a29cb0615d37dBa2aD7A2679e4cb09A5cf11", // molecular test account
 		// "0xabc123...", // more accounts
+		// "0xdef456...", // more accounts
 	],
 
 	// list of contracts to extract data for, use names from assets/config/contract.json
