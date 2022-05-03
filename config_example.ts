@@ -16,8 +16,8 @@ export const config = {
 
 	// list the smartbch account adresses you want to export data for
 	"my_addresses": [ 
-		// "0xabc123...", // more accounts
-		// "0xdef456...", // more accounts
+		// "0xabc123...", 
+		// "0xdef456...", 
 	],
 
 	// output configuration
