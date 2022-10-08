@@ -8,7 +8,7 @@ import Web3 from "web3";
 //import { Transaction } from 'web3-eth';
 import { Log, BlockNumber, TransactionConfig } from 'web3-core';
 
-import { UtilHelperService } from './services/helpers/util-helper.service'
+import { UtilHelperService } from './services/helpers/util-helper.service';
 import { EventDecoder, IDecodedValue } from './services/helpers/event-decoder';
 
 import { createWriteStream, createReadStream } from 'fs';
@@ -16,8 +16,11 @@ import { stringify } from 'csv-stringify';
 import { parse } from 'csv-parse';
 import { BigNumber } from 'bignumber.js';
 
-import { Contract, ContractManager } from './contractmanager'
-import { SmartBCHApi, TypedParameter, NamedReturnType } from './smartbch_api'
+import { Contract, ContractManager } from './contractmanager';
+import { SmartBCHApi, TypedParameter, NamedReturnType } from './smartbch_api';
+
+import * as fs from 'fs';
+import * as path from 'path';
 
 const util = new UtilHelperService();
 const sbch = new SmartBCHApi(config.api.apiEndpoint);
@@ -36,6 +39,9 @@ const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x =>
 
 // main
 
+ensureDir("./out/x")
+
+// if connection is working...
 sbch.blockNumber()
 .then(async (latest: string) => {
 
@@ -56,10 +62,9 @@ sbch.blockNumber()
 
 	const masterchef = "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4";
 
-	//do_1_transactions(start_block, end_block, max_count)
-	//do_2_ethGetLogs(start_block, end_block, max_count);
 	//do_masterchef_getPoolInfo(masterchef);
-	do_get_transactions(config.my_addresses, start_block, end_block)
+	do_transactions(config.my_addresses, start_block, end_block)
+	do_2_ethGetLogs(config.my_addresses, start_block, end_block);
 
 })
 .catch((error) => {
@@ -68,12 +73,14 @@ sbch.blockNumber()
 
 // main funcs
 
-async function do_get_transactions(addresses: string[], start_block, end_block) {
+async function do_transactions(addresses: string[], start_block, end_block) {
 	Promise.all(
 		addresses.map(address => sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block)))
 	)
 	.then(flattenArrays)
-//	.then(logToConsole)
+	.then(parseHex(["blockNumber", "gas", "gasPrice", "nonce", "transactionIndex", "value"]))
+	.then(extendEventsWithBlockInfo)
+	.then(parseHex(["blockTimestamp"]))
 	.then(writeCSV("out/transactions.csv"))
 	.catch(logError)
 }
@@ -114,23 +121,16 @@ async function do_masterchef_getPoolInfo(masterchef_address: string) {
 	.then(writeCSV("out/basedata/masterchef_pools.csv"))
 }
 
-function do_1_transactions(start_block, end_block, max_count) {
-	Promise.all(config.my_addresses.map((address) => {
-		return sbch.queryTxByAddr(address, start_block, util.toHex(end_block), util.toHex(max_count))
-	}))
-	.then(logResults)
-}
-
-function do_2_ethGetLogs(start_block, end_block, max_count) {
+function do_2_ethGetLogs(addresses: string[], start_block, end_block) {
 	// append my_addresses from config
-	let my_address_topics = config.my_addresses.map((address) => util.convertAddressToTopic(address));
+	let address_topics = addresses.map((address) => util.convertAddressToTopic(address));
 	let sets = [
 		{ contract_address: "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72", topics: [Web3.utils.sha3("ChangeMultiplier(uint256)")] },
-		{ contract_address: null, topics: [null, my_address_topics] },
-		{ contract_address: null, topics: [null, null, my_address_topics] },
-		{ contract_address: null, topics: [null, null, null, my_address_topics] },
-		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, my_address_topics] }, // mist masterchef
-		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, null, my_address_topics] },
+		{ contract_address: null, topics: [null, address_topics] },
+		{ contract_address: null, topics: [null, null, address_topics] },
+		{ contract_address: null, topics: [null, null, null, address_topics] },
+		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, address_topics] }, // mist masterchef
+		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, null, address_topics] },
 	]
 
 	Promise.all(sets.map((set) => {
@@ -147,9 +147,11 @@ function do_2_ethGetLogs(start_block, end_block, max_count) {
 	// })
 	.then(decodeLogsToEvents)
 	.then(extendEventsWithBlockInfo)
+	.then(parseHex(["blockTimestamp"]))
 	.then(appendSyntheticEvents)
 	.then(convertValues)
 	.then(sortChronologically)
+	.then(parseHex(["transaction_index"]))
 	.then(groupEventsByName)
 	.then(writeCSVs);
 
@@ -167,6 +169,18 @@ function logError(error) {
 
 function flattenArrays(arrays) {
 	return arrays.reduce((o, i) => { return o.concat(i); }, [])
+}
+
+function parseHex(parameter_names: string[]) {
+	return (result) => {
+		return result.map((data) => {
+			parameter_names.forEach((p) => {
+				data[p] = util.parseHex(data[p]) 
+				//data[p] = new BigNumber(data[p]).toString()
+			});
+			return data;
+		})
+	}
 }
 
 function logResults(result: any) {
@@ -236,6 +250,7 @@ function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 	});
 	return sbch.getBlocksByNumbers(blockNumbers)
 	.then((blocks: any[]) => {
+		//console.log("blocks", blocks)
 		let blocks_by_number = blocks.reduce((o, block) => {
 			o[util.parseHex(block.number)] = block;
 			return o;
@@ -366,7 +381,7 @@ async function convertValues(events): Promise<any[]> {
 			if (key.indexOf("(uint256)") > 0) {
 				if (event[key] !== undefined ) {
 					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals"]}`)).toFixed(config.output.decimals)
-					event[key] = new BigNumber(event[key]).integerValue()
+					event[key] = new BigNumber(event[key]).integerValue().toString()
 				}
 			}
 		});
@@ -390,7 +405,21 @@ function groupEventsByName(events: any[]): Promise<any> {
 	return events_by_name;
 }
 
+function ensureDir(dir: string) {
+	console.log("ensureDir(", dir, ")")
+	if (!fs.existsSync(dir)){
+		console.log("creating dir", dir)
+		fs.mkdirSync(dir, { recursive: true });
+	}
+}
+
+function ensureDirForFile(filename: string) {
+	console.log("ensureDirForFile(", filename, ")")
+	ensureDir(path.dirname(filename))
+}
+
 function writeCSV(filename: string) {
+	ensureDirForFile(filename)
 	return (results) => {
 		stringify(results, { 
 			header: true,
@@ -407,12 +436,13 @@ function writeCSVs(events_by_name) {
 	// dump events of each event name to "<event_name>.csv"
 	Object.keys(events_by_name).forEach((event_name) => {
 		let events = events_by_name[event_name];  
-		let filename = event_name + ".csv";
+		let filename = "out/events/" + event_name + ".csv";
+		ensureDirForFile(filename)
 		stringify(events, { 
 			header: true,
 			columns: Object.keys(events[0])
 		})
-		.pipe(createWriteStream(filename));
+		.pipe(createWriteStream(filename))
 		console.log(`wrote ${filename}: ${events.length} ${event_name}-events`);
 	})
 

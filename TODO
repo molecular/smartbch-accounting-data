@@ -10,6 +10,5 @@ TODO
 		* maybe separate the trackBalances from generateSyntheticEvents as a start, trackBalance could be useful for other things
 	* type events by creating interface Event?
   * maybe change "from(address)" => "from:address" in column naming for consistency?
-  * decide wether to use own SmartBCHApi api or the stuff copied over from smartscan
+  * remove api client stuff copied over from smartscan
   * output.decimals config var should go away since that cannot be expected to be specified across the board (?)
-  * csv output: make sure parent directories exist

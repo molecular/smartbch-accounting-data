@@ -6,7 +6,7 @@ export const config = {
 		"apiVersion": "v1",
 		"network": "Mainnet",
 
-		//"apiEndpoint": "http://nil.criptolayer.net:8545"
+		//"apiEndpoint": "http://nil.criptolayer.net:18545"
 		"apiEndpoint": "https://smartbch.fountainhead.cash/mainnet:8545"
 		// "apiEndpoint": "https://smartbch.fountainhead.cash/mainnet"
 		// "apiEndpoint": "https://global.uat.cash"
