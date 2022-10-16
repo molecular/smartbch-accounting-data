@@ -141,11 +141,12 @@ export class ContractManager {
 						value_18: ""
 					};
 					if ( p.type === "uint256" ) {
+						p.value = new BigNumber(decoded["inputs"][i].toString()).integerValue().toFixed(0); 
 						p.value_18 = new BigNumber(decoded["inputs"][i].toString()).integerValue().dividedBy(m).toFixed(output_decimals); 
 					}
 					parameters.push(p);
 				}
-				d["parametes"] = parameters;
+				d["parameters"] = parameters;
 
 				// human_readable (making 18 decimals assumption for BigNumbers)
 				let h = decoded.method + "(";

@@ -64,7 +64,7 @@ sbch.blockNumber()
 
 	//do_masterchef_getPoolInfo(masterchef);
 	do_transactions(config.my_addresses, start_block, end_block)
-	do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
+	//do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
 
 	//do_test(config)
 
@@ -106,7 +106,9 @@ async function do_transactions(addresses: string[], start_block, end_block) {
 	.then(extendEventsWithBlockInfo)
 	.then(parseHex(["blockTimestamp"]))
 	.then(convertBCHValues(["value"]))
-	.then(writeCSV("out/transactions.csv"))
+	.then(addDecodedInputData)
+	//.then(logToConsole)
+	.then(writeCSVs("out"))
 	.catch(logError)
 }
 
@@ -214,11 +216,46 @@ function decodeTransactionInputs(results: any) {
 			let decoded = contract_manager.decodeTransactionInput(contract, tx.input, config.output.decimals);
 			if (decoded && decoded.length > 0) {
 				tx.input = decoded[0].human_readable;
-				tx.decoded_input = decoded;
+				tx.decoded_inputs = decoded;
 			}
 		}
 		return tx;
 	})
+}
+
+/* reformat transaction[] to Object like this:
+	{
+		transactions: <the transactions>
+		decoded_inputs: list of { txhash: ..., method: string }
+		decoded_input_parameters: list of decoded parameters 
+	}
+	for later output to separate csv files			
+*/
+
+function addDecodedInputData(transactions: any) {
+	let decoded_inputs: any[] = [];
+	let decoded_input_parameters: any[] = [];
+	transactions.forEach((tx) => {
+		if (tx.decoded_inputs) {
+			tx.decoded_inputs.forEach((decoded_input) => {
+				decoded_inputs.push({
+					txhash: tx.hash,
+					method: decoded_input.method,
+				});
+				decoded_input.parameters.forEach((para) => {
+					decoded_input_parameters.push({
+						txhash: tx.hash,
+						...para
+					});	
+				})
+			})
+		}
+	})
+	return {
+		transactions: transactions,
+		decoded_inputs: decoded_inputs,
+		decoded_input_parameters: decoded_input_parameters,
+	};
 }
 
 function decodeLogsToEvents(logs: Log[]) {
@@ -500,17 +537,18 @@ function writeCSV(filename: string) {
 function writeCSVs(dir: string) {
 	ensureDir(dir)
 	return (data_by_name) => {
-		// dump events of each event name to "<event_name>.csv"
-		Object.keys(data_by_name).forEach((event_name) => {
-			let events = data_by_name[event_name];  
-			let filename = "out/events/" + event_name + ".csv";
+		//console.log("data_by_name: ", data_by_name);
+		// dump data of each name to "<name>.csv"
+		Object.keys(data_by_name).forEach((name) => {
+			let data = data_by_name[name];  
+			let filename = dir + "/" + name + ".csv";
 			ensureDirForFile(filename)
-			stringify(events, { 
+			stringify(data, { 
 				header: true,
-				columns: Object.keys(events[0])
+				columns: Object.keys(data[0])
 			})
 			.pipe(createWriteStream(filename))
-			console.log(`wrote ${filename}: ${events.length} ${event_name}-events`);
+			console.log(`wrote ${filename}: ${data.length} ${name}s`);
 		})
 	}
 }
