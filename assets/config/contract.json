@@ -1,5 +1,19 @@
 [
   {
+    "address": "0x437E444365aD9ed788e8f255c908bceAd5AEA645",
+    "abiNames": ["sep20","uniswapV2Router02"],
+    "type": "custom",
+    "name": "MISTswap LP Token flexUSD/MIST",
+    "logo": false
+  },
+  {
+    "address": "0x24f011f12ea45afadb1d4245ba15dcab38b43d13",
+    "abiNames": ["sep20","uniswapV2Router02"],
+    "type": "custom",
+    "name": "MISTswap LP Token flexUSD/BCH",
+    "logo": false
+  },
+  {
     "address": "0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154",
     "abiNames": ["uniswapV2Pair"],
     "type": "uniswapV2Pair",

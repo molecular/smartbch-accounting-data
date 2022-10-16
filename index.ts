@@ -64,7 +64,9 @@ sbch.blockNumber()
 
 	//do_masterchef_getPoolInfo(masterchef);
 	do_transactions(config.my_addresses, start_block, end_block)
-	do_2_ethGetLogs(config.my_addresses, start_block, end_block);
+	do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
+
+	//do_test(config)
 
 })
 .catch((error) => {
@@ -73,14 +75,39 @@ sbch.blockNumber()
 
 // main funcs
 
+async function do_test(config) {
+	console.log("removeLiquidityEth sig:", Web3.utils.sha3("removeLiquidityETH(address,uint256,uint256,uint256,address,uint256)"));
+
+	let contract_address = '0x5d0bf8d8c8b054080e2131d8b260a5c6959411b8';
+	contract_manager.loadContracts([contract_address]);
+	let contract = contract_manager.getContractByAddress(contract_address);
+	
+	let txhash = '0xe7972ab470f782d38b4209c3db1cf05bbe5f2e931e4ce2b9b5d6c66af54b116d';
+	Promise.all(
+		config.my_addresses.map(address => sbch.queryTxByAddr(address, util.toHex(6730101), util.toHex(6730101)))
+	)
+	.then(flattenArrays)
+	// sbch.getTransactionReceipt(txhash)
+	.then(logToConsole)
+	.then((result) => {
+		result.forEach((tx) => {
+			let contract = contract_manager.getContractByAddress(tx.to);
+			contract_manager.decodeTransactionInput(contract, tx.input, config.output.decimals);
+		})
+	})
+	.then(logToConsole)
+}
+
 async function do_transactions(addresses: string[], start_block, end_block) {
 	Promise.all(
 		addresses.map(address => sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block)))
 	)
 	.then(flattenArrays)
+	.then(decodeTransactionInputs)
 	.then(parseHex(["blockNumber", "gas", "gasPrice", "nonce", "transactionIndex", "value"]))
 	.then(extendEventsWithBlockInfo)
 	.then(parseHex(["blockTimestamp"]))
+	.then(convertBCHValues(["value"]))
 	.then(writeCSV("out/transactions.csv"))
 	.catch(logError)
 }
@@ -121,23 +148,28 @@ async function do_masterchef_getPoolInfo(masterchef_address: string) {
 	.then(writeCSV("out/basedata/masterchef_pools.csv"))
 }
 
-function do_2_ethGetLogs(addresses: string[], start_block, end_block) {
+function do_2_ethGetLogs(addresses: string[], routers_chefs: string[], start_block, end_block) {
 	// append my_addresses from config
 	let address_topics = addresses.map((address) => util.convertAddressToTopic(address));
 	let sets = [
 		{ contract_address: "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72", topics: [Web3.utils.sha3("ChangeMultiplier(uint256)")] },
 		{ contract_address: null, topics: [null, address_topics] },
 		{ contract_address: null, topics: [null, null, address_topics] },
-		{ contract_address: null, topics: [null, null, null, address_topics] },
-		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, address_topics] }, // mist masterchef
-		{ contract_address: "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4", topics: [null, null, address_topics] },
+		{ contract_address: null, topics: [null, null, null, address_topics] }
 	]
+
+	sets = sets.concat(flattenArrays(routers_chefs.map((r) => {
+		return [
+			{ contract_address: r, topics: [null, address_topics] },
+			{ contract_address: r, topics: [null, null, address_topics] }
+		];
+	})));
 
 	Promise.all(sets.map((set) => {
 		return sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
 	}))
 	.then(flattenArrays)
-//	.then(logToConsole)
+	//.then(logToConsole)
 	.then((logs) => {
 		return contract_manager.loadContracts(logs.map(log => log.address))
 		.then(() => { return logs; });
@@ -171,48 +203,56 @@ function flattenArrays(arrays) {
 	return arrays.reduce((o, i) => { return o.concat(i); }, [])
 }
 
-function parseHex(parameter_names: string[]) {
-	return (result) => {
-		return result.map((data) => {
-			parameter_names.forEach((p) => {
-				data[p] = util.parseHex(data[p]) 
-				//data[p] = new BigNumber(data[p]).toString()
-			});
-			return data;
-		})
-	}
-}
-
 function logResults(result: any) {
 	console.log(result);
 	return result;
 }
 
+function decodeTransactionInputs(results: any) {
+	return results.map((tx) => {
+		let contract = contract_manager.getContractByAddress(tx.to);
+		if ( contract ) {
+			let decoded = contract_manager.decodeTransactionInput(contract, tx.input, config.output.decimals);
+			if (decoded && decoded.length > 0) {
+				tx.input = decoded[0].human_readable;
+				tx.decoded_input = decoded;
+			}
+		}
+		return tx;
+	})
+}
+
 function decodeLogsToEvents(logs: Log[]) {
 	return Promise.all(logs.map(async (log) => {
+		console.log("decoding logs for contract ", log.address)
 		let contract = contract_manager.getContractByAddress(log.address)
 		if (contract) {
-			let contract_abi = contract_abis.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))[0]
-			let event_decoder = new EventDecoder(contract_abi.abi);
-			let dlog = event_decoder.decodeLog(log);
-			if (dlog) {
-				let parameters = dlog.events.reduce((o, e: IDecodedValue) => {
-					o[`${e.name}(${e.type})`] = e.value;
-					return o;
-				}, {});
-				return {
-					blockNumber: util.parseHex(""+log.blockNumber),
-					transaction_hash: log.transactionHash,
-					transaction_index: log.transactionIndex,
-					abi: contract_abi.type,
-					event_name: dlog.name,
-					contract_address: log.address,
-					contract_name: contract["name"],
-					contract_symbol: contract["symbol"],
-					...parameters
-				}
-			} else { // decode fail
-				console.log(`decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Cannot decode events`);
+			let decode_results = contract_abis
+			.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))
+			.map((contract_abi) => {
+				let event_decoder = new EventDecoder(contract_abi.abi);
+				let dlog = event_decoder.decodeLog(log);
+				if (dlog) {
+					let parameters = dlog.events.reduce((o, e: IDecodedValue) => {
+						o[`${e.name}(${e.type})`] = e.value;
+						return o;
+					}, {});
+					console.log("  success decoding events using contract_abi \"", contract_abi.type, "\" to log.name=", dlog.name)
+					return {
+						blockNumber: util.parseHex(""+log.blockNumber),
+						transaction_hash: log.transactionHash,
+						transaction_index: log.transactionIndex,
+						abi: contract_abi.type,
+						event_name: dlog.name,
+						contract_address: log.address,
+						contract_name: contract["name"],
+						contract_symbol: contract["symbol"],
+						...parameters
+					}
+				} 
+			})
+			if (decode_results.length == 0) {
+				console.log(`  decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Cannot decode events`);
 				//console.log(log)
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),
@@ -224,8 +264,10 @@ function decodeLogsToEvents(logs: Log[]) {
 					contract_name: contract["name"],
 					contract_symbol: contract["symbol"],
 				}
-
+			} else {
+				return decode_results[0];
 			}
+
 		} else { // no contract
 			console.log("no contract for log.address", log.address);
 			return {
@@ -308,7 +350,7 @@ function appendSyntheticEvents(events: any[]) {
 			o[a] = new BigNumber(0.0);
 			return o;
 		}, {});
-		console.log("contract", contract.address, "balances", balance_by_address);
+		//console.log("contract", contract.address, "balances", balance_by_address);
 
 		// iterate through events in chronological order tracking balance and generating <synthetic> events
 		let previousMultiplier = new BigNumber(`1E${contract["decimals"]}`);
@@ -374,6 +416,30 @@ function appendSyntheticEvents(events: any[]) {
 	});
 }
 
+function parseHex(parameter_names: string[]) {
+	return (result) => {
+		return result.map((data) => {
+			parameter_names.forEach((p) => {
+				data[p] = util.parseHex(data[p]) 
+				//data[p] = new BigNumber(data[p]).toString()
+			});
+			return data;
+		});
+	};
+}
+
+function convertBCHValues(parameter_names: string[]) {
+	let m = new BigNumber("1E18");
+	return (events) => {
+		return events.map((event) => {
+			parameter_names.forEach((p) => {
+				event[p] = new BigNumber(event[p]).integerValue().dividedBy(m).toFixed(config.output.decimals);
+			});
+			return event;
+		});
+	};
+}
+
 async function convertValues(events): Promise<any[]> {
 	events.forEach(async (event) => {
 		let contract = await contract_manager.getContractByAddress(event.contract_address);
@@ -388,6 +454,7 @@ async function convertValues(events): Promise<any[]> {
 	});
 	return events;
 }
+
 
 function groupEventsByName(events: any[]): Promise<any> {
 	// group eventy by their types
@@ -406,7 +473,7 @@ function groupEventsByName(events: any[]): Promise<any> {
 }
 
 function ensureDir(dir: string) {
-	console.log("ensureDir(", dir, ")")
+	//console.log("ensureDir(", dir, ")")
 	if (!fs.existsSync(dir)){
 		console.log("creating dir", dir)
 		fs.mkdirSync(dir, { recursive: true });
@@ -414,7 +481,7 @@ function ensureDir(dir: string) {
 }
 
 function ensureDirForFile(filename: string) {
-	console.log("ensureDirForFile(", filename, ")")
+	//console.log("ensureDirForFile(", filename, ")")
 	ensureDir(path.dirname(filename))
 }
 

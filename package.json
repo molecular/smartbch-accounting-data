@@ -19,6 +19,7 @@
     "bignumber.js": "^9.0.2",
     "csv-parse": "^5.0.4",
     "csv-stringify": "^6.0.5",
+    "ethereum-input-data-decoder": "^0.4.2",
     "lodash": "^4.17.21",
     "npx": "^10.2.2",
     "path": "^0.12.7",

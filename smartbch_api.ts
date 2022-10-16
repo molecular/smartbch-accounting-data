@@ -86,6 +86,15 @@ export class SmartBCHApi {
 		);
 	}
 
+	// public getTransactionByHash(txhash: string): Promise<void | Transaction[]> {
+ //  	console.log("getTransactionByHash", txhash)
+	// 	return this.rpc_request(
+	// 		"getTransactionByHash", 
+	// 		[txhash],
+	// 		false
+	// 	);
+	// }
+
 /*	public call(from: string | null, to: string | null, data: string | null, returnType?: string | string[] ): Promise<any> {
 		returnType = returnType?returnType:'uint256'
 		return this.rpc_request("eth_call", [
@@ -102,6 +111,14 @@ export class SmartBCHApi {
 		});
 	}
 */
+	// public getTransactionReceipt(txhash: string) {
+	// 	return this.rpc_request(
+	// 		"eth_getTransactionReceipt", 
+	// 		[txhash],
+	// 		false
+	// 	);
+	// }
+
 	public call(from: string | null, to: string | null, method_signature: string, parameters: TypedParameter[] = [], returnType?: string | NamedReturnType[] ): Promise<any> {
 		returnType = returnType??'uint256'
 
@@ -132,4 +149,5 @@ export class SmartBCHApi {
 			}
 		});
 	}
+
 }

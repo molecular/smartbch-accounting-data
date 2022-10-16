@@ -12,3 +12,5 @@ TODO
   * maybe change "from(address)" => "from:address" in column naming for consistency?
   * remove api client stuff copied over from smartscan
   * output.decimals config var should go away since that cannot be expected to be specified across the board (?)
+
+  * why I have to add routers_masterchefs to config.ts?
