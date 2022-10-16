@@ -82,12 +82,10 @@ async function do_test(config) {
 	contract_manager.loadContracts([contract_address]);
 	let contract = contract_manager.getContractByAddress(contract_address);
 	
-	let txhash = '0xe7972ab470f782d38b4209c3db1cf05bbe5f2e931e4ce2b9b5d6c66af54b116d';
 	Promise.all(
 		config.my_addresses.map(address => sbch.queryTxByAddr(address, util.toHex(6730101), util.toHex(6730101)))
 	)
 	.then(flattenArrays)
-	// sbch.getTransactionReceipt(txhash)
 	.then(logToConsole)
 	.then((result) => {
 		result.forEach((tx) => {
@@ -110,6 +108,48 @@ async function do_transactions(addresses: string[], start_block, end_block) {
 	.then(convertBCHValues(["value"]))
 	.then(writeCSV("out/transactions.csv"))
 	.catch(logError)
+}
+
+function do_2_ethGetLogs(addresses: string[], routers_chefs: string[], start_block, end_block) {
+	// collect topic patterns in "sets"
+	let address_topics = addresses.map((address) => util.convertAddressToTopic(address));
+	let sets = [
+		{ contract_address: "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72", topics: [Web3.utils.sha3("ChangeMultiplier(uint256)")] },
+		{ contract_address: null, topics: [null, address_topics] },
+		{ contract_address: null, topics: [null, null, address_topics] },
+		{ contract_address: null, topics: [null, null, null, address_topics] }
+	]
+
+	// add patterns for 
+	sets = sets.concat(flattenArrays(routers_chefs.map((r) => {
+		return [
+			{ contract_address: r, topics: [null, address_topics] },
+			{ contract_address: r, topics: [null, null, address_topics] }
+		];
+	})));
+
+	Promise.all(sets.map((set) => {
+		return sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
+	}))
+	.then(flattenArrays)
+	//.then(logToConsole)
+	.then((logs) => {
+		return contract_manager.loadContracts(logs.map(log => log.address))
+		.then(() => { return logs; });
+	})
+	// .then((events) => {
+	// 	return events.filter((event) => event.address == '0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154');
+	// })
+	.then(decodeLogsToEvents)
+	.then(extendEventsWithBlockInfo)
+	.then(parseHex(["blockTimestamp"]))
+	.then(appendSyntheticEvents)
+	.then(convertValues)
+	.then(sortChronologically)
+	.then(parseHex(["transaction_index"]))
+	.then(groupEventsByName)
+	.then(writeCSVs("out/events"));
+
 }
 
 async function do_masterchef_getPoolInfo(masterchef_address: string) {
@@ -148,47 +188,6 @@ async function do_masterchef_getPoolInfo(masterchef_address: string) {
 	.then(writeCSV("out/basedata/masterchef_pools.csv"))
 }
 
-function do_2_ethGetLogs(addresses: string[], routers_chefs: string[], start_block, end_block) {
-	// append my_addresses from config
-	let address_topics = addresses.map((address) => util.convertAddressToTopic(address));
-	let sets = [
-		{ contract_address: "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72", topics: [Web3.utils.sha3("ChangeMultiplier(uint256)")] },
-		{ contract_address: null, topics: [null, address_topics] },
-		{ contract_address: null, topics: [null, null, address_topics] },
-		{ contract_address: null, topics: [null, null, null, address_topics] }
-	]
-
-	sets = sets.concat(flattenArrays(routers_chefs.map((r) => {
-		return [
-			{ contract_address: r, topics: [null, address_topics] },
-			{ contract_address: r, topics: [null, null, address_topics] }
-		];
-	})));
-
-	Promise.all(sets.map((set) => {
-		return sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
-	}))
-	.then(flattenArrays)
-	//.then(logToConsole)
-	.then((logs) => {
-		return contract_manager.loadContracts(logs.map(log => log.address))
-		.then(() => { return logs; });
-	})
-	// .then((events) => {
-	// 	return events.filter((event) => event.address == '0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154');
-	// })
-	.then(decodeLogsToEvents)
-	.then(extendEventsWithBlockInfo)
-	.then(parseHex(["blockTimestamp"]))
-	.then(appendSyntheticEvents)
-	.then(convertValues)
-	.then(sortChronologically)
-	.then(parseHex(["transaction_index"]))
-	.then(groupEventsByName)
-	.then(writeCSVs);
-
-}
-
 function logToConsole(result) {
 	console.log(result);
 	return result;
@@ -224,7 +223,7 @@ function decodeTransactionInputs(results: any) {
 
 function decodeLogsToEvents(logs: Log[]) {
 	return Promise.all(logs.map(async (log) => {
-		console.log("decoding logs for contract ", log.address)
+		//console.log("decoding logs for contract ", log.address)
 		let contract = contract_manager.getContractByAddress(log.address)
 		if (contract) {
 			let decode_results = contract_abis
@@ -237,7 +236,7 @@ function decodeLogsToEvents(logs: Log[]) {
 						o[`${e.name}(${e.type})`] = e.value;
 						return o;
 					}, {});
-					console.log("  success decoding events using contract_abi \"", contract_abi.type, "\" to log.name=", dlog.name)
+					//console.log("  success decoding events using contract_abi \"", contract_abi.type, "\" to log.name=", dlog.name)
 					return {
 						blockNumber: util.parseHex(""+log.blockNumber),
 						transaction_hash: log.transactionHash,
@@ -498,20 +497,21 @@ function writeCSV(filename: string) {
 	}; 
 }
 
-function writeCSVs(events_by_name) {
-
-	// dump events of each event name to "<event_name>.csv"
-	Object.keys(events_by_name).forEach((event_name) => {
-		let events = events_by_name[event_name];  
-		let filename = "out/events/" + event_name + ".csv";
-		ensureDirForFile(filename)
-		stringify(events, { 
-			header: true,
-			columns: Object.keys(events[0])
+function writeCSVs(dir: string) {
+	ensureDir(dir)
+	return (data_by_name) => {
+		// dump events of each event name to "<event_name>.csv"
+		Object.keys(data_by_name).forEach((event_name) => {
+			let events = data_by_name[event_name];  
+			let filename = "out/events/" + event_name + ".csv";
+			ensureDirForFile(filename)
+			stringify(events, { 
+				header: true,
+				columns: Object.keys(events[0])
+			})
+			.pipe(createWriteStream(filename))
+			console.log(`wrote ${filename}: ${events.length} ${event_name}-events`);
 		})
-		.pipe(createWriteStream(filename))
-		console.log(`wrote ${filename}: ${events.length} ${event_name}-events`);
-	})
-
+	}
 }
 //     queryLogs(address: string, data: any[], start: string | 'latest', end: string | 'latest', limit: string): Promise<any>;
