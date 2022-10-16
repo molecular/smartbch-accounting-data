@@ -64,7 +64,7 @@ sbch.blockNumber()
 
 	//do_masterchef_getPoolInfo(masterchef);
 	do_transactions(config.my_addresses, start_block, end_block)
-	//do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
+	do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
 
 	//do_test(config)
 
