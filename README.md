@@ -72,6 +72,12 @@ Theres many ways to compile/run a typescript project. One is:
 #> rm -f *.csv; npx ts-node index.ts 
 ```
 
+### Output
+
+You'll (hopefully) end up with a bunch of CSV files in out/ Folder. Example:
+
+![output files](doc/output_files.png)
+
 ## Telegram group for Support, Feedback, Discussion
 
 for support, feedback and discussion, please use [telegram group smartbch-accounting-data](https://t.me/smartbch_accounting_data)
