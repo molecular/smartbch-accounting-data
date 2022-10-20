@@ -1,13 +1,13 @@
 {
-  "name": "rpc_test",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "smartbch-accounting-data",
+  "version": "0.2",
+  "description": "Tool to pull data that is relevant for financial accounting from a smartbch-node via json rpc interface",
+  "main": "index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "devDependencies": {
     "ts-node": "^10.7.0",
     "tslint": "^6.1.3",
