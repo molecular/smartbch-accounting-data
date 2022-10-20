@@ -60,87 +60,19 @@ sbch.blockNumber()
 
 	const max_count = 0; // 0: default limit
 
-
 	//const masterchef = "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4";
 	//do_masterchef_getPoolInfo(masterchef);
 	
-	do_transactions(config.my_addresses, config.additional_event_patterns, start_block, end_block)
-	//do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
-
-	//do_test(config)
+	pipe_it(config.my_addresses, config.additional_event_patterns, start_block, end_block)
 
 })
 .catch((error) => {
 	console.log(`error connecting to sbch node ${config.api.apiEndpoint}: ${error}`);
 });
 
-// main funcs
+async function pipe_it(addresses: string[], additional_event_patterns, start_block, end_block) {
 
-async function do_test(config) {
-	console.log("removeLiquidityEth sig:", Web3.utils.sha3("removeLiquidityETH(address,uint256,uint256,uint256,address,uint256)"));
-
-	let contract_address = '0x5d0bf8d8c8b054080e2131d8b260a5c6959411b8';
-	contract_manager.loadContracts([contract_address]);
-	let contract = contract_manager.getContractByAddress(contract_address);
-	
-	Promise.all(
-		config.my_addresses.map(address => sbch.queryTxByAddr(address, util.toHex(6730101), util.toHex(6730101)))
-	)
-	.then(flattenArrays)
-	.then(logToConsole)
-	.then((result) => {
-		result.forEach((tx) => {
-			let contract = contract_manager.getContractByAddress(tx.to);
-			contract_manager.decodeTransactionInput(contract, tx.input, config.output.decimals);
-		})
-	})
-	.then(logToConsole)
-}
-
-
-function do_2_ethGetLogs(addresses: string[], routers_chefs: string[], start_block, end_block) {
-	// collect topic patterns in "sets"
-	let address_topics = addresses.map((address) => util.convertAddressToTopic(address));
-	let sets = [
-		{ contract_address: "0x7b2B3C5308ab5b2a1d9a94d20D35CCDf61e05b72", topics: [Web3.utils.sha3("ChangeMultiplier(uint256)")] },
-		{ contract_address: null, topics: [null, address_topics] },
-		{ contract_address: null, topics: [null, null, address_topics] },
-		{ contract_address: null, topics: [null, null, null, address_topics] }
-	]
-
-	// add patterns for 
-	sets = sets.concat(flattenArrays(routers_chefs.map((r) => {
-		return [
-			{ contract_address: r, topics: [null, address_topics] },
-			{ contract_address: r, topics: [null, null, address_topics] }
-		];
-	})));
-
-	Promise.all(sets.map((set) => {
-		return sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
-	}))
-	.then(flattenArrays)
-	//.then(logToConsole)
-	.then((logs) => {
-		return contract_manager.loadContracts(logs.map(log => log.address))
-		.then(() => { return logs; });
-	})
-	// .then((events) => {
-	// 	return events.filter((event) => event.address == '0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154');
-	// })
-	.then(decodeLogsToEvents)
-	.then(extendEventsWithBlockInfo)
-	.then(parseHex(["blockTimestamp"]))
-	.then(appendSyntheticEvents)
-	.then(convertValues)
-	.then(sortChronologically)
-	.then(parseHex(["transaction_index"]))
-	.then(groupEventsByName)
-	.then(writeCSVs("out/events"));
-
-}
-
-async function do_transactions(addresses: string[], additional_event_patterns, start_block, end_block) {
+	// collect transactions to/from "addresses"
 	Promise.all(
 		addresses.map(address => sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block)))
 	)
@@ -158,6 +90,8 @@ async function do_transactions(addresses: string[], additional_event_patterns, s
 	.then(addDecodedInputData)
 	//.then(logToConsole)
 	.then(writeCSVs("out/transactions"))
+
+	// get Logs for those transactions, add more logs and decode/dump those
 	.then((data) => {
 
 		// collect topic patterns for given "addresses"
@@ -169,27 +103,21 @@ async function do_transactions(addresses: string[], additional_event_patterns, s
 		]
 
 		// collect topic patterns for given "additional_event_patterns"
-		sets = sets.concat(flattenArrays(additional_event_patterns.map((r) => {
-			return [{
+		sets = sets.concat(flattenArrays(additional_event_patterns.map(r => [{
 				contract_address: r.contract_address, 
 				topics: [Web3.utils.sha3(r.methodSignature)]
-			}];
-		})));
+			}]
+		)));
 
 		return Promise.all(
 			// concat logs from transaction receipts with logs from ethGetLogs (using topics)
 			data.transactions.map((transaction) => {
-				//console.log("transaction:", transaction)
 				return sbch.getTransactionReceipt(transaction.hash)
-				.then((result) => {
-					return result.logs;
-				})
+				.then(result => result.logs)
 			})
-			.concat(
-				sets.map((set) => {
-			 		return sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
-			 	})	
-			)
+			.concat(sets.map(set => 
+				sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
+			))
 		)
 		.then(flattenArrays)
 		.then(removeDuplicateLogs)
