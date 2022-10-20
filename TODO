@@ -1,8 +1,20 @@
 TODO
 
- * format dates in CSV so openoffice/excel understand it
- * output format divider decimals is fixed, but should be taken from contract data
- * make "abiNames": ["FlexUSDImplV2","sep20"] work and then
- 	* change output filename <method>.csv to <abi_name>.<method>.csv
- * event order is by blockNumber only. There should be some addition in-block sequence number that needs to be used to not screw up the balance tracking and interest payment calculation
- * EXPONENTIAL_AT isn't working. Some output are 7.6E-17, for example
+	* make "abiNames": ["FlexUSDImplV2","sep20"] work and then
+		* change output filename <method>.csv to <abi_name>.<method>.csv
+
+	* event order is by blockNumber only. There should be some addition in-block sequence number that needs to be used to not screw up the balance tracking and interest payment calculation <- maybe transaction_index? edit: log_index?
+
+	* EXPONENTIAL_AT isn't working. Some output are 7.6E-17, for example
+
+	* I'm pretty sure the balance tracker will fail with transfers where to and from are both in config.my_addresses
+		* maybe separate the trackBalances from generateSyntheticEvents as a start, trackBalance could be useful for other things
+
+  * maybe change "from(address)" => "from:address" in column naming for consistency?
+
+  * why I have to add routers_masterchefs to config.ts?
+    * example where this is biting us:
+      * 0xe7972ab470f782d38b4209c3db1cf05bbe5f2e931e4ce2b9b5d6c66af54b116d (removeEthLiquidity): the transfer of WBCH from LP contract to Router is not currently grabbed by us
+    * potential solution: instead of tryint to craft patterns that grab this stuff, why not simply get the logs of all transactions?
+
+  * clean out/ directory at beginning to avoid stale data

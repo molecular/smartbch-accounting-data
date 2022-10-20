@@ -16,20 +16,24 @@ export class UtilHelperService {
     return convertedValue.toString();
   }
 
-  public convertTopicAddress(data: string) {
+  public convertTopicToAddress(data: string) {
     return '0x' + data.slice(data.length - 40, data.length)
+  }
+
+  public convertAddressToTopic(data: string) {
+    return "0x000000000000000000000000" + data.substring(2)
   }
 
   public getGasPercentageUsed(block: Block) {
     return ( (block.gasUsed / block.gasLimit) * 100).toFixed(5)
   }
 
-  public parseHex(data: string) {
+  public parseHex(data: string): number {
     if (data.startsWith('0x')) return parseInt(data, 16);
     else return parseInt(data);
   }
 
-  public toHex(number: number) {
+  public toHex(number: number): string {
     return "0x" + number.toString(16);
   }
 
@@ -38,7 +42,4 @@ export class UtilHelperService {
     .replace(/(\d{3}(?!.*\.|$))/g, '$1,').split('').reverse().join('')
   }
 
-  public convertAddressToTopic(data: string) {
-    return "0x000000000000000000000000" + data.substring(2)
-  }
 }

@@ -5,3 +5,6 @@ config.ts
 config.js
 .~lock*
 *.csv
+out/*
+removed/*
+out

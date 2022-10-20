@@ -2,7 +2,7 @@
 
 ![output teaser](doc/output_teaser.png)
 
-Tool to pull data that is relevant for financial accounting from a smartbch-node
+Tool to pull data that is relevant for financial accounting from a smartbch-node via json rpc interface
 
 > Caveat: there are know issues and potential problems. Always double-check the output data somehow and be careful. See section `caveats` below.
 
@@ -12,17 +12,20 @@ Getting data from EVM chains for accounting purposes (in case you want to pay ta
 
 This tool tries to help with this issue by pulling data from a smartbch node and dumping it (after processing) to CSV files.
 
-### Current state: mainly geared to flexUSD interest payments
-
-While the scope of this project is much larger, it is currently heavily geared towards getting a list of flexUSD interest payments.
-
-getting a list of flexUSD interest payments is pretty hard: due to the way the flexUSD contract handles interest payments (using a multiplier approach) there are no separate transactions paying interest to each holder. Instead, a contract-global multiplier is used (and adjusten when interest is paid).
-
 ### How this tools extracts data
 
-The general mode of operation of this tool is to use the rpc interface of a smartbch node to call the `queryLogs(...)` function, which will return a list of events emitted by the given contract over it's course of existance. These events are decoded and written to CSV Files (one for each event type)
+The general mode of operation of this tool is:
 
-#### How this tool extracts flexUSD interest payments
+ * collect transactions (using `queryTxByAddr` RPC call) having any of the `my_addresses` from config file as source or destination
+   * write transactions to `out/transactions/transactions.csv`
+   * decode transaction inputs and write to `out/transactions/decoded_inputs.csv` and `out/transactions/decoded_input_parameters.csv`
+ * extract log events from these transactions using `getTransactionReceipt` RPC call
+ * add to those log events data from `getLogs` RPC call with topic patterns matching anything that contains any of the configured `my_addresses` as one of the first 3 parameters. This will have overlap with the log events from transactions, but also add some in case the external transaction does not involve any of the `my_addresses`
+ * add to those log events data from `getLogs` RPC call with topic patterns matching flexUSD contract's ChangeMulitplier event (needed for generating synthetic interest payment Transfers)
+ * generates synthetic (fake) Transfer events for flexUSD interest payments by tracking flexUSD account balance and calculating interest payment amount using this balance and the new ChangeMultiplier from above-mentioned ChangeMultiplier-event. 
+ * decode those log events and write them (categorized by event name) to `out/events/<event name>.csv`
+
+#### How exactly this tool extracts flexUSD interest payments
 
 For flexUSD contract specifically, there is an event named `ChangeMultiplier`. flexUSD uses a multiplier that is applied to account balances on operations that read or write account balances. That was interest can be paid to all accounts simply by increasing this multiplier. The downside is that there are not separate interest payment transactions to the accounts.
 
@@ -50,21 +53,23 @@ Then run...
 
 ### Configuration
 
-First copy the example config file and edit it to create your `config.ts`
+First copy the `config_example.ts` config file to `config.ts` and edit it
 
 ```
 #> cp config.example.ts config.ts
 #> edit config.ts
 ```
 
-main task here is to configure your list of smartbch accounts
+main task here is to configure your list of smartbch accounts `my_addresses`
 
 ### Running
+
+Before running it's probably a good idea to remove any .csv file from previous runs to not end up with stale data.
 
 Theres many ways to compile/run a typescript project. One is:
 
 ```
-#> npx ts-node index.ts 
+#> rm -f *.csv; npx ts-node index.ts 
 ```
 
 ## Telegram group for Support, Feedback, Discussion
@@ -75,6 +80,5 @@ for support, feedback and discussion, please use [telegram group smartbch-accoun
 
  * Everything (including output CSV columns, formats, etc...) is still in flux. Don't depend on things staying the same over time.
  * The general approach used to create flexUSD interest payment events may or may not work well all cases (there are other ideas, but for now it's what it is, see above for a description), please sanity-check the output.
- * CSV date output is not formatted in a good way for office software to understand
  * see [TODO](TODO)
 
