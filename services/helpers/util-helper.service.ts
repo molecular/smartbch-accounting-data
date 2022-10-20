@@ -16,7 +16,7 @@ export class UtilHelperService {
     return convertedValue.toString();
   }
 
-  public convertTopicAddress(data: string) {
+  public convertTopicToAddress(data: string) {
     return '0x' + data.slice(data.length - 40, data.length)
   }
 

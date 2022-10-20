@@ -39,7 +39,7 @@ const range = (start, end) => Array.from(Array(end - start + 1).keys()).map(x =>
 
 // main
 
-ensureDir("./out/x")
+ensureDir("./out")
 
 // if connection is working...
 sbch.blockNumber()
@@ -60,11 +60,12 @@ sbch.blockNumber()
 
 	const max_count = 0; // 0: default limit
 
-	const masterchef = "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4";
 
+	//const masterchef = "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4";
 	//do_masterchef_getPoolInfo(masterchef);
-	do_transactions(config.my_addresses, start_block, end_block)
-	do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
+	
+	do_transactions(config.my_addresses, config.additional_event_patterns, start_block, end_block)
+	//do_2_ethGetLogs(config.my_addresses, config.routers_chefs, start_block, end_block);
 
 	//do_test(config)
 
@@ -96,21 +97,6 @@ async function do_test(config) {
 	.then(logToConsole)
 }
 
-async function do_transactions(addresses: string[], start_block, end_block) {
-	Promise.all(
-		addresses.map(address => sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block)))
-	)
-	.then(flattenArrays)
-	.then(decodeTransactionInputs)
-	.then(parseHex(["blockNumber", "gas", "gasPrice", "nonce", "transactionIndex", "value"]))
-	.then(extendEventsWithBlockInfo)
-	.then(parseHex(["blockTimestamp"]))
-	.then(convertBCHValues(["value"]))
-	.then(addDecodedInputData)
-	//.then(logToConsole)
-	.then(writeCSVs("out"))
-	.catch(logError)
-}
 
 function do_2_ethGetLogs(addresses: string[], routers_chefs: string[], start_block, end_block) {
 	// collect topic patterns in "sets"
@@ -152,6 +138,89 @@ function do_2_ethGetLogs(addresses: string[], routers_chefs: string[], start_blo
 	.then(groupEventsByName)
 	.then(writeCSVs("out/events"));
 
+}
+
+async function do_transactions(addresses: string[], additional_event_patterns, start_block, end_block) {
+	Promise.all(
+		addresses.map(address => sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block)))
+	)
+	.then(flattenArrays)
+	.then(decodeTransactionInputs)
+	.then(parseHex(["blockNumber", "gas", "gasPrice", "nonce", "transactionIndex", "value"]))
+	.then(extendEventsWithBlockInfo)
+	.then(parseHex(["blockTimestamp"]))
+	.then(convertBCHValues(["value"]))
+	.then((transactions) => {
+		return {
+			transactions: transactions,
+		};
+	})
+	.then(addDecodedInputData)
+	//.then(logToConsole)
+	.then(writeCSVs("out/transactions"))
+	.then((data) => {
+
+		// collect topic patterns for given "addresses"
+		let address_topics = addresses.map((address) => util.convertAddressToTopic(address));
+		let sets = [
+			{ contract_address: null, topics: [null, address_topics] },
+			{ contract_address: null, topics: [null, null, address_topics] },
+			{ contract_address: null, topics: [null, null, null, address_topics] }
+		]
+
+		// collect topic patterns for given "additional_event_patterns"
+		sets = sets.concat(flattenArrays(additional_event_patterns.map((r) => {
+			return [{
+				contract_address: r.contract_address, 
+				topics: [Web3.utils.sha3(r.methodSignature)]
+			}];
+		})));
+
+		return Promise.all(
+			// concat logs from transaction receipts with logs from ethGetLogs (using topics)
+			data.transactions.map((transaction) => {
+				//console.log("transaction:", transaction)
+				return sbch.getTransactionReceipt(transaction.hash)
+				.then((result) => {
+					return result.logs;
+				})
+			})
+			.concat(
+				sets.map((set) => {
+			 		return sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
+			 	})	
+			)
+		)
+		.then(flattenArrays)
+		.then(removeDuplicateLogs)
+		.then((logs) => {
+			return contract_manager.loadContracts(logs.map(log => log.address))
+			.then(() => { return logs; });
+		})
+		.then((logs) => {
+			console.log("got", logs.length, "new logs")
+			data.logs = logs;
+			return logs;
+		})
+		.then(decodeLogsToEvents)
+		.then(extendEventsWithBlockInfo)
+		.then(parseHex(["blockTimestamp"]))
+		.then(appendSyntheticEvents)
+		.then(convertValues)
+		.then(sortChronologically)
+		.then(parseHex(["transaction_index"]))
+		.then(groupEventsByName)
+		.then((events) => {
+			console.log("got", events.length, "events")
+			data.events = events;
+			return data;
+		})
+		.then((data) => {
+			return data.events;
+		})
+		.then(writeCSVs("out/events"))
+	})
+	.catch(logError)
 }
 
 async function do_masterchef_getPoolInfo(masterchef_address: string) {
@@ -204,6 +273,17 @@ function flattenArrays(arrays) {
 	return arrays.reduce((o, i) => { return o.concat(i); }, [])
 }
 
+function removeDuplicateLogs(logs) {
+	//console.log("", logs.length, "logs before removeDupes")
+	let o = logs.reduce((o, log) => {
+		o[log.transactionHash + ' ' + log.logIndex] = log;
+		return o;
+	}, {});
+	let rc = Object.keys(o).map(k => o[k])
+	//console.log("", rc.length, "logs after removeDupes")
+	return rc;
+}
+
 function logResults(result: any) {
 	console.log(result);
 	return result;
@@ -232,10 +312,10 @@ function decodeTransactionInputs(results: any) {
 	for later output to separate csv files			
 */
 
-function addDecodedInputData(transactions: any) {
+function addDecodedInputData(data: any) {
 	let decoded_inputs: any[] = [];
 	let decoded_input_parameters: any[] = [];
-	transactions.forEach((tx) => {
+	data.transactions.forEach((tx) => {
 		if (tx.decoded_inputs) {
 			tx.decoded_inputs.forEach((decoded_input) => {
 				decoded_inputs.push({
@@ -251,11 +331,9 @@ function addDecodedInputData(transactions: any) {
 			})
 		}
 	})
-	return {
-		transactions: transactions,
-		decoded_inputs: decoded_inputs,
-		decoded_input_parameters: decoded_input_parameters,
-	};
+	data.decoded_inputs = decoded_inputs;
+	data.decoded_input_parameters = decoded_input_parameters;
+	return data;
 }
 
 function decodeLogsToEvents(logs: Log[]) {
@@ -536,20 +614,21 @@ function writeCSV(filename: string) {
 
 function writeCSVs(dir: string) {
 	ensureDir(dir)
-	return (data_by_name) => {
-		//console.log("data_by_name: ", data_by_name);
-		// dump data of each name to "<name>.csv"
-		Object.keys(data_by_name).forEach((name) => {
-			let data = data_by_name[name];  
+	return (data) => {
+		// dump data of each top-level key to "<name>.csv"
+		//console.log("keys", Object.keys(data))
+		Object.keys(data).forEach((name) => {
+			let d = data[name];  
 			let filename = dir + "/" + name + ".csv";
 			ensureDirForFile(filename)
-			stringify(data, { 
+			stringify(d, { 
 				header: true,
-				columns: Object.keys(data[0])
+				columns: Object.keys(d[0])
 			})
 			.pipe(createWriteStream(filename))
-			console.log(`wrote ${filename}: ${data.length} ${name}s`);
+			console.log(`wrote ${filename}: ${d.length} ${name}s`);
 		})
+		return data;
 	}
 }
 //     queryLogs(address: string, data: any[], start: string | 'latest', end: string | 'latest', limit: string): Promise<any>;

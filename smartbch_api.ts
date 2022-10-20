@@ -111,13 +111,13 @@ export class SmartBCHApi {
 		});
 	}
 */
-	// public getTransactionReceipt(txhash: string) {
-	// 	return this.rpc_request(
-	// 		"eth_getTransactionReceipt", 
-	// 		[txhash],
-	// 		false
-	// 	);
-	// }
+	public getTransactionReceipt(txhash: string) {
+		return this.rpc_request(
+			"eth_getTransactionReceipt", 
+			[txhash],
+			false
+		);
+	}
 
 	public call(from: string | null, to: string | null, method_signature: string, parameters: TypedParameter[] = [], returnType?: string | NamedReturnType[] ): Promise<any> {
 		returnType = returnType??'uint256'
