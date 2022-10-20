@@ -72,7 +72,7 @@ export class ContractManager {
 			{name: "symbol", return_type: 'string'},
 			{name: "totalSupply", return_type: 'uint256'},
 		];
-		console.log("loading contracts for addresses: ", addresses);
+		console.log("loading contracts: ", addresses);
 		let call_promises: Promise<void | Contract>[] = []
 		addresses.forEach((address) => {
 			let contract: Contract = this.getContractByAddress(address);

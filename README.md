@@ -69,7 +69,7 @@ Before running it's probably a good idea to remove any .csv file from previous r
 Theres many ways to compile/run a typescript project. One is:
 
 ```
-#> rm -f *.csv; npx ts-node index.ts 
+#> rm -f out/*.csv; npx ts-node index.ts 
 ```
 
 ### Output

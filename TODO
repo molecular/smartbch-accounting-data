@@ -18,3 +18,5 @@ TODO
     * potential solution: instead of tryint to craft patterns that grab this stuff, why not simply get the logs of all transactions?
 
   * clean out/ directory at beginning to avoid stale data
+
+  * maybe the event decoder can be used from some npm dependency instead of copied into local sources from smartscan (abi-coder?)

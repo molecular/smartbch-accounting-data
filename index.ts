@@ -547,14 +547,17 @@ function writeCSVs(dir: string) {
 		//console.log("keys", Object.keys(data))
 		Object.keys(data).forEach((name) => {
 			let d = data[name];  
-			let filename = dir + "/" + name + ".csv";
-			ensureDirForFile(filename)
-			stringify(d, { 
-				header: true,
-				columns: Object.keys(d[0])
-			})
-			.pipe(createWriteStream(filename))
-			console.log(`wrote ${filename}: ${d.length} ${name}s`);
+			if (d.length > 0) {
+				console.log("keys(d[0])", Object.keys(d[0]));
+				let filename = dir + "/" + name + ".csv";
+				ensureDirForFile(filename)
+				stringify(d, { 
+					header: true,
+					columns: Object.keys(d[0])
+				})
+				.pipe(createWriteStream(filename))
+				console.log(`wrote ${filename}: ${d.length} ${name}s`);
+			}
 		})
 		return data;
 	}
