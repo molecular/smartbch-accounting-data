@@ -13,6 +13,7 @@ export const config = {
 		//"apiEndpoint": "https://rpc.uatvo.com"
 		//"apiEndpoint": "https://moeing.tech:9545"
 	},	
+	"block_fetching_batch_size": 100, // how many "eth_getBlockByNumber"-requests to fire in parallel 
 
 	// list the smartbch account adresses you want to export data for
 	"my_addresses": [ 

@@ -62,7 +62,7 @@ sbch.blockNumber()
 
 	//const masterchef = "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4";
 	//do_masterchef_getPoolInfo(masterchef);
-	
+
 	pipe_it(config.my_addresses, config.additional_event_patterns, start_block, end_block)
 
 })
@@ -327,38 +327,47 @@ function decodeLogsToEvents(logs: Log[]) {
 }
 
 // look up blocks to set blockTimestamp, blockDate on each transfer
-function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {		
-	let blockNumbers: string[] = events.map((t) => { 
-		if (t) return util.toHex(t.blockNumber); 
-		return '0x0'
-	});
-	return sbch.getBlocksByNumbers(blockNumbers)
-	.then((blocks: any[]) => {
-		//console.log("blocks", blocks)
-		let blocks_by_number = blocks.reduce((o, block) => {
-			o[util.parseHex(block.number)] = block;
-			return o;
-		},{});
+async function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {		
+	// collect blockNumbers
+	let blockNumbers: string[] = events
+	.filter((event) => event)
+	.map((t) => util.toHex(t.blockNumber))
 
-		// extend event with block info
-		return events
-		.filter((event) => event)
-		.map((event) => {
-			if (event && event.blockNumber) {
-				let block = blocks_by_number[event.blockNumber]
-				return {
-					blockTimestamp: block.timestamp,
-					blockDate: new Date(1000 * parseInt(""+block.timestamp)).toISOString(),
-					...event,
-				};
-			} else {
-				return {
-					blockTimestamp: -1,
-					blockDate: "",
-					...event,
-				};
-			}
+	// request blocks for those blockNumbers in batches and index by block number
+	console.log("", blockNumbers.length, "blockNumbers: ", blockNumbers);
+	let blocks_by_number = {}
+	while (blockNumbers.length) {
+		console.log("", blockNumbers.length, "blockNumbers left");
+		await sbch.getBlocksByNumbers(blockNumbers.splice(0, config.block_fetching_batch_size))
+		.then((blocks: any[]) => {
+			blocks.forEach((block) => {
+				if (block.number === undefined) {
+					console.log("block with undefined number: ", block)
+				} else {
+					blocks_by_number[util.parseHex(block.number)] = block;
+				}
+			},{});
 		});
+	}
+
+	// extend events with collected block info
+	return events
+	.filter((event) => event)
+	.map((event) => {
+		if (event && event.blockNumber) {
+			let block = blocks_by_number[event.blockNumber]
+			return {
+				blockTimestamp: block.timestamp,
+				blockDate: new Date(1000 * parseInt(""+block.timestamp)).toISOString(),
+				...event,
+			};
+		} else {
+			return {
+				blockTimestamp: -1,
+				blockDate: "",
+				...event,
+			};
+		}
 	});
 }
 

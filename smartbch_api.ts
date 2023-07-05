@@ -60,12 +60,12 @@ export class SmartBCHApi {
 		return this.rpc_request("eth_blockNumber");
 	}
 
-	public getBlockByNumber(blockNumber: string): Promise<any> {
-		return this.rpc_request("eth_getBlockByNumber", [blockNumber, true]);
+	public getBlockByNumber(blockNumber: string, include_transactions: boolean): Promise<any> { // not sure it's really "include_transactions" semantically, but testing says yes, could be
+		return this.rpc_request("eth_getBlockByNumber", [blockNumber, include_transactions]);
 	}
 
 	public getBlocksByNumbers(blockNumbers: string[]): Promise<any[]> {
-		return Promise.all(blockNumbers.map((blockNumber) => this.getBlockByNumber(blockNumber)));
+		return Promise.all(blockNumbers.map((blockNumber) => this.getBlockByNumber(blockNumber, false)));
 	}
 
   public getLogs(address: string|null, topics: (string | string[] | null)[], start: string | 'latest', end: string | 'latest'): Promise<Log[]> {
