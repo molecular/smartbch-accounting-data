@@ -64,8 +64,8 @@ export class SmartBCHApi {
 		return this.rpc_request("eth_getBlockByNumber", [blockNumber, include_transactions]);
 	}
 
-	public getBlocksByNumbers(blockNumbers: string[]): Promise<any[]> {
-		return Promise.all(blockNumbers.map((blockNumber) => this.getBlockByNumber(blockNumber, false)));
+	public getBlocksByNumbers(blockNumbers: string[], include_transactions: boolean): Promise<any[]> {
+		return Promise.all(blockNumbers.map((blockNumber) => this.getBlockByNumber(blockNumber, include_transactions)));
 	}
 
   public getLogs(address: string|null, topics: (string | string[] | null)[], start: string | 'latest', end: string | 'latest'): Promise<Log[]> {
@@ -86,15 +86,6 @@ export class SmartBCHApi {
 		);
 	}
 
-	// public getTransactionByHash(txhash: string): Promise<void | Transaction[]> {
- //  	console.log("getTransactionByHash", txhash)
-	// 	return this.rpc_request(
-	// 		"getTransactionByHash", 
-	// 		[txhash],
-	// 		false
-	// 	);
-	// }
-
 /*	public call(from: string | null, to: string | null, data: string | null, returnType?: string | string[] ): Promise<any> {
 		returnType = returnType?returnType:'uint256'
 		return this.rpc_request("eth_call", [
@@ -111,11 +102,11 @@ export class SmartBCHApi {
 		});
 	}
 */
-	public getTransactionReceipt(txhash: string) {
+	public getTransactionReceipt(txhash: string, log: boolean = false) {
 		return this.rpc_request(
 			"eth_getTransactionReceipt", 
 			[txhash],
-			false
+			log
 		);
 	}
 

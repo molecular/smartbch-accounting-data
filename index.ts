@@ -63,20 +63,25 @@ sbch.blockNumber()
 	//const masterchef = "0x3a7b9d0ed49a90712da4e087b17ee4ac1375a5d4";
 	//do_masterchef_getPoolInfo(masterchef);
 
+	// pipe it all
 	pipe_it(config.my_addresses, config.additional_event_patterns, start_block, end_block)
+	// single out a specific tx by its hash
+//	pipe_it(config.my_addresses, config.additional_event_patterns, start_block, end_block, '0x650b9fe67f2505f045cc8c3e4ac12f2a6ebdc0887c63fc1db63ee88adc583aae')
 
 })
 .catch((error) => {
 	console.log(`error connecting to sbch node ${config.api.apiEndpoint}: ${error}`);
 });
 
-async function pipe_it(addresses: string[], additional_event_patterns, start_block, end_block) {
+
+async function pipe_it(addresses: string[], additional_event_patterns, start_block, end_block, match_single_tx_hash?: string) {
 
 	// collect transactions to/from "addresses"
 	Promise.all(
 		addresses.map(address => sbch.queryTxByAddr(address, util.toHex(start_block), util.toHex(end_block)))
 	)
 	.then(flattenArrays)
+	.then((txs) => txs.filter((tx) => (tx && (!match_single_tx_hash || tx.hash == match_single_tx_hash))))
 	.then(decodeTransactionInputs)
 	.then(parseHex(["blockNumber", "gas", "gasPrice", "nonce", "transactionIndex", "value"]))
 	.then(extendEventsWithBlockInfo)
@@ -113,6 +118,7 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 			// concat logs from transaction receipts with logs from ethGetLogs (using topics)
 			data.transactions.map((transaction) => {
 				return sbch.getTransactionReceipt(transaction.hash)
+				.then(logToConsole)
 				.then(result => result.logs)
 			})
 			.concat(sets.map(set => 
@@ -120,6 +126,8 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 			))
 		)
 		.then(flattenArrays)
+		//.then(logToConsole)
+		.then((logs) => logs.filter((log) => log && (!match_single_tx_hash || log.transactionHash == match_single_tx_hash)))
 		.then(removeDuplicateLogs)
 		.then((logs) => {
 			return contract_manager.loadContracts(logs.map(log => log.address))
@@ -131,6 +139,7 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 			return logs;
 		})
 		.then(decodeLogsToEvents)
+		//.then(logToConsole)
 		.then(extendEventsWithBlockInfo)
 		.then(parseHex(["blockTimestamp"]))
 		.then(appendSyntheticEvents)
@@ -138,14 +147,14 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 		.then(sortChronologically)
 		.then(parseHex(["transaction_index"]))
 		.then(groupEventsByName)
-		.then((events) => {
-			console.log("got", events.length, "events")
-			data.events = events;
-			return data;
-		})
-		.then((data) => {
-			return data.events;
-		})
+		// .then((events) => {
+		// 	console.log("got", events.length, "events")
+		// 	data.events = events;
+		// 	return data;
+		// })
+		// .then((data) => {
+		// 	return data.events;
+		// })
 		.then(writeCSVs("out/events"))
 	})
 	.catch(logError)
@@ -188,7 +197,7 @@ async function do_masterchef_getPoolInfo(masterchef_address: string) {
 }
 
 function logToConsole(result) {
-	console.log(result);
+	console.log("logToConsole:", result);
 	return result;
 }
 
@@ -268,7 +277,9 @@ function decodeLogsToEvents(logs: Log[]) {
 	return Promise.all(logs.map(async (log) => {
 		//console.log("decoding logs for contract ", log.address)
 		let contract = contract_manager.getContractByAddress(log.address)
+		//console.log("  found contract with address: ", log.address)
 		if (contract) {
+			//console.log("  abis: ", contract["abiNames"]);
 			let decode_results = contract_abis
 			.filter(abi => contract["abiNames"].map((n) => { return n.toLowerCase(); }).includes(abi.type.toLowerCase()))
 			.map((contract_abi) => {
@@ -279,7 +290,7 @@ function decodeLogsToEvents(logs: Log[]) {
 						o[`${e.name}(${e.type})`] = e.value;
 						return o;
 					}, {});
-					//console.log("  success decoding events using contract_abi \"", contract_abi.type, "\" to log.name=", dlog.name)
+					//console.log(`  success decoding events using contract_abi ${contract_abi.type}, to log.name=${dlog.name}`)
 					return {
 						blockNumber: util.parseHex(""+log.blockNumber),
 						transaction_hash: log.transactionHash,
@@ -293,6 +304,7 @@ function decodeLogsToEvents(logs: Log[]) {
 					}
 				} 
 			})
+			.filter(decode_results => decode_results)
 			if (decode_results.length == 0) {
 				console.log(`  decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Cannot decode events`);
 				//console.log(log)
@@ -338,7 +350,7 @@ async function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 	let blocks_by_number = {}
 	while (blockNumbers.length) {
 		console.log("", blockNumbers.length, "blockNumbers left");
-		await sbch.getBlocksByNumbers(blockNumbers.splice(0, config.block_fetching_batch_size))
+		await sbch.getBlocksByNumbers(blockNumbers.splice(0, config.block_fetching_batch_size), true)
 		.then((blocks: any[]) => {
 			blocks.forEach((block) => {
 				if (block.number === undefined) {
@@ -497,8 +509,16 @@ async function convertValues(events): Promise<any[]> {
 		Object.keys(event).forEach((key) => {
 			if (key.indexOf("(uint256)") > 0) {
 				if (event[key] !== undefined ) {
-					event[key+"_"] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals"]}`)).toFixed(config.output.decimals)
+					let new_key = key + "_"
+					event[new_key] = new BigNumber(event[key]).integerValue().dividedBy(new BigNumber(`1e${contract["decimals"]}`)).toFixed(config.output.decimals)
 					event[key] = new BigNumber(event[key]).integerValue().toString()
+					// rename "wad" -> "value"
+					if (new_key == 'wad(uint256)_') {
+						event['value(uint256)'] = event['wad(uint256)']
+						event['value(uint256)_'] = event['wad(uint256)_']
+						delete event['wad(uint256)']
+						delete event['wad(uint256)_']
+					}
 				}
 			}
 		});
@@ -557,7 +577,7 @@ function writeCSVs(dir: string) {
 		Object.keys(data).forEach((name) => {
 			let d = data[name];  
 			if (d.length > 0) {
-				console.log("keys(d[0])", Object.keys(d[0]));
+				//console.log("keys(d[0])", Object.keys(d[0]));
 				let filename = dir + "/" + name + ".csv";
 				ensureDirForFile(filename)
 				stringify(d, { 

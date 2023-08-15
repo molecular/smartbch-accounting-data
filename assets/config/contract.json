@@ -1,16 +1,30 @@
 [
   {
+    "address": "0xc2f937D8128114D94A89bb50f7fFCEfFb5B0754b",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "BenSwap-LP",
+    "logo": false
+  },
+  {
     "address": "0x437E444365aD9ed788e8f255c908bceAd5AEA645",
-    "abiNames": ["sep20","uniswapV2Router02"],
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
     "type": "custom",
     "name": "MISTswap LP Token flexUSD/MIST",
     "logo": false
   },
   {
     "address": "0x24f011f12ea45afadb1d4245ba15dcab38b43d13",
-    "abiNames": ["sep20","uniswapV2Router02"],
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
     "type": "custom",
     "name": "MISTswap LP Token flexUSD/BCH",
+    "logo": false
+  },
+  {
+    "address": "0x1ee39f93450d80981c169e59c8a641a3bc853a09",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "MISTswap LP Token ORB/BCH",
     "logo": false
   },
   {
