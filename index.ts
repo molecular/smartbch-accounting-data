@@ -66,7 +66,7 @@ sbch.blockNumber()
 	// pipe it all
 	pipe_it(config.my_addresses, config.additional_event_patterns, start_block, end_block)
 	// single out a specific tx by its hash
-//	pipe_it(config.my_addresses, config.additional_event_patterns, start_block, end_block, '0x650b9fe67f2505f045cc8c3e4ac12f2a6ebdc0887c63fc1db63ee88adc583aae')
+//	pipe_it(config.my_addresses, config.additional_event_patterns, start_block, end_block, '0xf8a39664088247df6a4e18e56b993c2832db340b6f61681c664f9980a36cb5d8')
 
 })
 .catch((error) => {
@@ -268,16 +268,18 @@ function addDecodedInputData(data: any) {
 	data.transactions.forEach((tx) => {
 		if (tx.decoded_inputs) {
 			tx.decoded_inputs.forEach((decoded_input) => {
-				decoded_inputs.push({
-					txhash: tx.hash,
-					method: decoded_input.method,
-				});
-				decoded_input.parameters.forEach((para) => {
-					decoded_input_parameters.push({
+				if (decoded_input.method && decoded_input.method.length > 0) {
+					decoded_inputs.push({
 						txhash: tx.hash,
-						...para
-					});	
-				})
+						method: decoded_input.method,
+					});
+					decoded_input.parameters.forEach((para) => {
+						decoded_input_parameters.push({
+							txhash: tx.hash,
+							...para
+						});	
+					})
+				}
 			})
 		}
 	})
