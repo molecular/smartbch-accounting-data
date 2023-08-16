@@ -90,11 +90,13 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 	.then((transactions) => {
 		return {
 			transactions: transactions,
+			txs_by_hash: transactions.reduce((o, tx) => {
+				o[tx.hash] = tx;
+				return o;
+			}, {})
 		};
 	})
 	.then(addDecodedInputData)
-	//.then(logToConsole)
-	.then(writeCSVs("out/transactions"))
 
 	// get Logs for those transactions, add more logs and decode/dump those
 	.then((data) => {
@@ -118,15 +120,26 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 			// concat logs from transaction receipts with logs from ethGetLogs (using topics)
 			data.transactions.map((transaction) => {
 				return sbch.getTransactionReceipt(transaction.hash)
-				.then(logToConsole)
+				// remove failed tx from data.txs_by_hash
+				.then(tx_status => {
+					if (tx_status.status == '0x0') {
+						delete data.txs_by_hash[tx_status.transactionHash]
+					}
+					return tx_status;
+				})
 				.then(result => result.logs)
 			})
 			.concat(sets.map(set => 
 				sbch.getLogs(set.contract_address, set.topics, util.toHex(start_block), util.toHex(end_block))
 			))
 		)
+		.then(x => {
+			data.transactions = Object.values(data.txs_by_hash);
+			delete data.txs_by_hash;
+			return x;
+		})
 		.then(flattenArrays)
-		//.then(logToConsole)
+		//.then(logToConsole) // log the logs
 		.then((logs) => logs.filter((log) => log && (!match_single_tx_hash || log.transactionHash == match_single_tx_hash)))
 		.then(removeDuplicateLogs)
 		.then((logs) => {
@@ -138,8 +151,12 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 			data.logs = logs;
 			return logs;
 		})
+		.then((logs) => {
+			data.transactions = data.transactions.filter((tx) => tx.status != '0x0')
+			return logs
+		})
 		.then(decodeLogsToEvents)
-		//.then(logToConsole)
+		//.then(logToConsole) // log the events
 		.then(extendEventsWithBlockInfo)
 		.then(parseHex(["blockTimestamp"]))
 		.then(appendSyntheticEvents)
@@ -147,15 +164,11 @@ async function pipe_it(addresses: string[], additional_event_patterns, start_blo
 		.then(sortChronologically)
 		.then(parseHex(["transaction_index"]))
 		.then(groupEventsByName)
-		// .then((events) => {
-		// 	console.log("got", events.length, "events")
-		// 	data.events = events;
-		// 	return data;
-		// })
-		// .then((data) => {
-		// 	return data.events;
-		// })
 		.then(writeCSVs("out/events"))
+
+		// switch back to data and dump transactions to csv
+		.then(logs => data)
+		.then(writeCSVs("out/transactions"))
 	})
 	.catch(logError)
 }
@@ -344,6 +357,7 @@ async function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 	let blockNumbers: string[] = events
 	.filter((event) => event)
 	.map((t) => util.toHex(t.blockNumber))
+	.filter((elem, index, self) => index === self.indexOf(elem)) // remove duplicates
 
 	// request blocks for those blockNumbers in batches and index by block number
 	console.log("", blockNumbers.length, "blockNumbers: ", blockNumbers);
