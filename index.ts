@@ -241,6 +241,7 @@ function logResults(result: any) {
 
 function decodeTransactionInputs(results: any) {
 	return results.map((tx) => {
+		tx.decoded_inputs = null;
 		let contract = contract_manager.getContractByAddress(tx.to);
 		if ( contract ) {
 			let decoded = contract_manager.decodeTransactionInput(contract, tx.input, config.output.decimals);

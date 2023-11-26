@@ -2,6 +2,7 @@ NOTES
 dist
 node_modules
 config.ts
+config_some.ts
 config.js
 .~lock*
 *.csv
