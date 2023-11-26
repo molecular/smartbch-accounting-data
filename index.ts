@@ -321,7 +321,7 @@ function decodeLogsToEvents(logs: Log[]) {
 			})
 			.filter(decode_results => decode_results)
 			if (decode_results.length == 0) {
-				console.log(`  decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. Cannot decode events`);
+				console.log(`  decode fail, unknwon/missing non-sep20 abi for contract ${contract.address}. contract: ${contract}`);
 				//console.log(log)
 				return {
 					blockNumber: util.parseHex(""+log.blockNumber),

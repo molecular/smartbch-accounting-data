@@ -1,5 +1,30 @@
 [
   {
+    "address": "fallback",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "FALLBACK_CONTRACT",
+    "logo": false
+  },
+
+
+
+
+  {
+    "address": "0x1336001cbdb94c5cf95ee93f2dc3ca99db382ff4",
+    "abiNames": ["sep20","BolivarBridge"],
+    "type": "custom",
+    "name": "BolivarBridge (proxied)",
+    "logo": false
+  },
+  {
+    "address": "0xf13541fad443a4bf4160b5c0f46ac5c735a908d3",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "SwapsRouter",
+    "logo": false
+  },
+  {
     "address": "0x0c1cb50d5eed1bea4b4dd62b6368c0ca63abac11",
     "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
     "type": "custom",
@@ -7,40 +32,113 @@
     "logo": false
   },
   {
-    "address": "0xc2f937D8128114D94A89bb50f7fFCEfFb5B0754b",
+    "address": "0x5d0bF8d8c8b054080E2131D8b260a5c6959411B8",
     "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
     "type": "custom",
-    "name": "BenSwap LP ORB/BCH",
+    "name": "MIST Router",
+    "logo": false
+  },
+
+  {
+    "address": "0xf8534BB9603c501Bbe16deF7D08D941F0241855b",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "TangoSwap LP",
+    "logo": false
+  },
+  {
+    "address": "0x4b773a2ea30c6a77564e4fae60204e7bc0a81a90",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "TangoSwap LP",
+    "logo": false
+  },
+  {
+    "address": "0xbC6ade4d6b3aEFe107C37C5C028De1E247de4533",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "TropicalFinance LP",
+    "logo": false
+  },
+
+  {
+    "address": "0x27580618797a2ce02fdfbbee948388a50a823611",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "MISTswap LP bcUSDT/BCH",
+    "logo": false
+  },
+  {
+    "address": "0xfa26d55184cb512180e4ff9e62b4c1e0327abb53",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "MISTswap LP flexUSD/bcUSDT",
     "logo": false
   },
   {
     "address": "0x437E444365aD9ed788e8f255c908bceAd5AEA645",
     "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
     "type": "custom",
-    "name": "MISTswap LP Token flexUSD/MIST",
+    "name": "MISTswap LP flexUSD/MIST",
     "logo": false
   },
   {
     "address": "0x24f011f12ea45afadb1d4245ba15dcab38b43d13",
     "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
     "type": "custom",
-    "name": "MISTswap LP Token flexUSD/BCH",
+    "name": "MISTswap LP flexUSD/BCH",
     "logo": false
   },
   {
     "address": "0x1ee39f93450d80981c169e59c8a641a3bc853a09",
     "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
     "type": "custom",
-    "name": "MISTswap LP Token ORB/BCH",
+    "name": "MISTswap LP ORB/BCH",
     "logo": false
   },
   {
     "address": "0x674a71e69fe8d5ccff6fdcf9f1fa4262aa14b154",
-    "abiNames": ["uniswapV2Pair"],
-    "type": "uniswapV2Pair",
-    "name": "MistLPTEST",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "MISTSwap LP MIST/BCH",
     "logo": false
   },
+  {
+    "address": "0xde5d57b31cb67d5aed93c26940394796953961cb",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "MISTSwap LP bcBCH/BCH",
+    "logo": false
+  },
+  {
+    "address": "0xf4d43d7ef48f46ee7e6989c45d0e97456e20b53b",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "MISTSwap LP bcBCH/BCH",
+    "logo": false
+  },
+
+
+  {
+    "address": "0xa79e824e4d7e93ca1b305ff821c7de598360542b",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "Verse-X LP flexUSD/BCH",
+    "logo": false
+  },
+
+
+  {
+    "address": "0xc2f937D8128114D94A89bb50f7fFCEfFb5B0754b",
+    "abiNames": ["sep20","uniswapV2Router02","uniswapV2Pair"],
+    "type": "custom",
+    "name": "BenSwap LP ORB/BCH",
+    "logo": false
+  },
+
+
+
+
   {
     "address": "0xE11829A7D5d8806BB36E118461a1012588faFD89",
     "abiNames": ["sep20"],
@@ -361,13 +459,6 @@
     "abiNames": ["benswaprouter"],
     "type": "custom",
     "name": "MuesliSwap Router",
-    "logo": false
-  },
-  {
-    "address": "0x5d0bF8d8c8b054080E2131D8b260a5c6959411B8",
-    "abiNames": ["uniswapV2Router02"],
-    "type": "custom",
-    "name": "MIST Router",
     "logo": false
   },
   {
