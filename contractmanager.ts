@@ -61,7 +61,9 @@ export class ContractManager {
 	public async loadContracts(addresses: string[]) {
 		// remove dupes
 		addresses = Object.keys(addresses.reduce((o, a) => { 
-			o[a.toLowerCase()] = true;
+			if (a) {
+				o[a.toLowerCase()] = true;
+			}
 			return o;
 		}, {}));
 

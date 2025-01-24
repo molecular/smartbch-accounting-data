@@ -242,12 +242,14 @@ function logResults(result: any) {
 function decodeTransactionInputs(results: any) {
 	return results.map((tx) => {
 		tx.decoded_inputs = null;
-		let contract = contract_manager.getContractByAddress(tx.to);
-		if ( contract ) {
-			let decoded = contract_manager.decodeTransactionInput(contract, tx.input, config.output.decimals);
-			if (decoded && decoded.length > 0) {
-				tx.input = decoded[0].human_readable;
-				tx.decoded_inputs = decoded;
+		if (tx.to !== undefined) {
+			let contract = contract_manager.getContractByAddress(tx.to);
+			if ( contract ) {
+				let decoded = contract_manager.decodeTransactionInput(contract, tx.input, config.output.decimals);
+				if (decoded && decoded.length > 0) {
+					tx.input = decoded[0].human_readable;
+					tx.decoded_inputs = decoded;
+				}
 			}
 		}
 		return tx;
@@ -292,7 +294,8 @@ function addDecodedInputData(data: any) {
 function decodeLogsToEvents(logs: Log[]) {
 	return Promise.all(logs.map(async (log) => {
 		//console.log("decoding logs for contract ", log.address)
-		let contract = contract_manager.getContractByAddress(log.address)
+		let contract;
+		if (log.address !== undefined) contract = contract_manager.getContractByAddress(log.address)
 		//console.log("  found contract with address: ", log.address)
 		if (contract) {
 			//console.log("  abis: ", contract["abiNames"]);
@@ -370,8 +373,8 @@ async function extendEventsWithBlockInfo(events: any[]): Promise<any[]> {
 		await sbch.getBlocksByNumbers(blockNumbers.splice(0, config.block_fetching_batch_size), true)
 		.then((blocks: any[]) => {
 			blocks.forEach((block) => {
-				if (block.number === undefined) {
-					console.log("block with undefined number: ", block)
+				if (block === undefined || block.number === undefined) {
+					console.log("undefined block or block with undefined number: ", block)
 				} else {
 					blocks_by_number[util.parseHex(block.number)] = block;
 				}
